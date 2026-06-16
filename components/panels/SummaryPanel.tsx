@@ -129,6 +129,7 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
         </div>
         <div className="cwrap tall">
           <Bar
+            key={curPeriod + '-waterfall'}
             data={{
               labels: wf.map(w => w.lbl),
               datasets: [{
@@ -143,6 +144,8 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
                   return isNeg ? '#ef4444' : '#9f7cef';
                 }),
                 borderRadius: 4,
+                barPercentage: 0.8,
+                categoryPercentage: 0.85,
               }],
             }}
             options={{

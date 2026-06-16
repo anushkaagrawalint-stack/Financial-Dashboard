@@ -73,14 +73,14 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
 
   const ebitdaDatasets = ebitdaSingle
     ? [
-        { label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.5, categoryPercentage: 0.7 },
-        { label: 'Actual (-)', data: ebitdaNeg, backgroundColor: '#dc2626', borderRadius: 3, barPercentage: 0.5, categoryPercentage: 0.7 },
-        { label: 'Budget', data: ebitdaBudget, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.5, categoryPercentage: 0.7 },
-        { label: 'Prior Year', data: ebitdaPY, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.5, categoryPercentage: 0.7 },
+        { label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
+        { label: 'Actual (-)', data: ebitdaNeg, backgroundColor: '#dc2626', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
+        { label: 'Budget', data: ebitdaBudget, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
+        { label: 'Prior Year', data: ebitdaPY, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
       ]
     : [
-        { type: 'bar' as const, label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.75, order: 2 },
-        { type: 'bar' as const, label: 'Actual (-)', data: ebitdaNeg, backgroundColor: '#dc2626', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.75, order: 2 },
+        { type: 'bar' as const, label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.9, categoryPercentage: 0.9, order: 2 },
+        { type: 'bar' as const, label: 'Actual (-)', data: ebitdaNeg, backgroundColor: '#dc2626', borderRadius: 3, barPercentage: 0.9, categoryPercentage: 0.9, order: 2 },
         { type: 'line' as const, label: 'Budget', data: ebitdaBudget, borderColor: 'rgba(124,58,237,.5)', backgroundColor: 'transparent', pointBackgroundColor: 'rgba(124,58,237,.5)', pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, borderDash: [5, 4], tension: 0.3, fill: false, order: 1 },
         { type: 'line' as const, label: 'Prior Year', data: ebitdaPY, borderColor: 'rgba(100,116,160,.7)', backgroundColor: 'transparent', pointBackgroundColor: 'rgba(100,116,160,.7)', pointRadius: 2, pointHoverRadius: 4, borderWidth: 1.5, tension: 0.3, fill: false, order: 1 },
       ];
@@ -140,6 +140,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
           </div>
           <div className="cwrap tall">
             <Bar
+              key={curPeriod + '-rev'}
               data={{
                 labels,
                 datasets: [
@@ -195,6 +196,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
           </div>
           <div className="cwrap pair">
             <Bar
+              key={curPeriod + '-ebitda'}
               data={{ labels, datasets: ebitdaDatasets as never }}
               options={{
                 responsive: true,

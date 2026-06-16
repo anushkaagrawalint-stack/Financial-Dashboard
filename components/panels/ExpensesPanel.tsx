@@ -172,6 +172,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
             </div>
             <div className="cwrap tall">
               <Bar
+                key={curPeriod + curSub + '-trend'}
                 data={{
                   labels,
                   datasets: [
@@ -215,12 +216,13 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
             <div className="cwrap pair">
               {idx.length === 1 ? (
                 <Bar
+                  key={curPeriod + curSub + '-pct'}
                   data={{
                     labels,
                     datasets: [
-                      { label: 'Actual', data: pctVals, backgroundColor: '#9f7cef', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
-                      { label: 'Budget', data: bPctVals, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
-                      { label: 'Prior Year', data: pyPctVals, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
+                      { label: 'Actual', data: pctVals, backgroundColor: '#9f7cef', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
+                      { label: 'Budget', data: bPctVals, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
+                      { label: 'Prior Year', data: pyPctVals, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
                     ],
                   }}
                   options={{

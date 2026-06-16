@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (localStorage.getItem('wbr_token')) {
-      router.replace('/');
+      router.replace('/dashboard');
       return;
     }
     emailRef.current?.focus();
@@ -28,7 +28,7 @@ export default function LoginPage() {
     try {
       const { token } = await login(email.trim(), password);
       localStorage.setItem('wbr_token', token);
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);

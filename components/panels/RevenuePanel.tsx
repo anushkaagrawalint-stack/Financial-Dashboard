@@ -86,6 +86,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
           </div>
           <div className="cwrap tall">
             <Bar
+              key={curPeriod + selKey}
               data={{
                 labels,
                 datasets: [
