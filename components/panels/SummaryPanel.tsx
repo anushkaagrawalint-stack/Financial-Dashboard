@@ -42,6 +42,7 @@ const HEADLINE_KEYS = ['Total Sales', 'Gross Profit', 'EBITDA', 'Net Income'];
 
 export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
+  const isAllLocations = curEntity === 'Consolidated';
   const showBud = hasBudget(D, curEntity, idx);
   const ts = agg(D, curEntity, 'Total Sales', idx).v || 1;
   const rangeLabel = idx.length > 1
@@ -92,7 +93,9 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
             <tbody>
               {LINES.map(line => {
                 const ent = line.useEntity || curEntity;
-                const a = agg(D, ent, line.key, idx);
+                const rawA = agg(D, ent, line.key, idx);
+                const isCorp = !!line.useEntity && !isAllLocations;
+                const a = isCorp ? { v: 0, b: 0, py: 0 } : rawA;
                 const salesForPct = agg(D, curEntity, 'Total Sales', idx).v || 1;
                 const pct = a.v ? (a.v / salesForPct) * 100 : null;
                 const bPct = a.b ? (a.b / salesForPct) * 100 : null;

@@ -2,7 +2,7 @@
 
 import '@/lib/chartSetup';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
@@ -97,7 +97,12 @@ const COLORS = ['#ef4444','#f59e0b','#8b5cf6','#60a5fa','#10b981','#fb923c','#9f
 
 export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   const [curSub, setCurSub] = useState('cogs');
+  const isAllLocations = curEntity === 'Consolidated';
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
+
+  useEffect(() => {
+    if (!isAllLocations && curSub === 'corporate') setCurSub('cogs');
+  }, [isAllLocations, curSub]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
   const showBud = hasBudget(D, curEntity, idx);
 
@@ -129,7 +134,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   return (
     <div className="panel active" id="panel-expenses">
       <div className="subtabs">
-        {SUBTABS.map(st => (
+        {SUBTABS.filter(st => isAllLocations || st.id !== 'corporate').map(st => (
           <div
             key={st.id}
             className={`subtab${curSub === st.id ? ' active' : ''}`}

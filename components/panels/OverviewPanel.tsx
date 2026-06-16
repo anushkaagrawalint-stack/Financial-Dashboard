@@ -48,13 +48,13 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]} (${idx.length} periods)`
     : D.periods[idx[0]];
 
-  const corpE = D.t12['RASA Worldwide'];
+  const isAllLocations = curEntity === 'Consolidated';
   const costSlices = [
     { lbl: 'COGS', key: 'Total Cost of Goods Sold', ent: curEntity, color: '#ef4444' },
     { lbl: 'Labor', key: 'Total Payroll Expenses', ent: curEntity, color: '#f59e0b' },
     { lbl: 'OpEx', key: 'Total Operating Expense', ent: curEntity, color: '#8b5cf6' },
     { lbl: 'Occupancy', key: 'Total Occupancy Cost', ent: curEntity, color: '#60a5fa' },
-    { lbl: 'Corporate', key: 'Total Corporate Overhead & Other', ent: 'RASA Worldwide', color: '#10b981' },
+    ...(isAllLocations ? [{ lbl: 'Corporate', key: 'Total Corporate Overhead & Other', ent: 'RASA Worldwide', color: '#10b981' }] : []),
   ];
   const donutVals = costSlices.map(s => Math.abs(agg(D, s.ent, s.key, idx).v || 0));
   const donutLabels = costSlices.map((s, i) => {

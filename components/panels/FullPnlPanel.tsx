@@ -264,14 +264,18 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
                   return <TotRow key={gi} D={D} lbl={g.lbl} dataKey={g.key} locs={activeLocs} idx={idx} />;
                 }
                 if (g.type === 'corp') {
-                  const a = agg(D, 'RASA Worldwide', g.key, idx);
+                  const corpA = agg(D, 'RASA Worldwide', g.key, idx);
                   const ts = agg(D, 'Consolidated', 'Total Sales', idx).v || 1;
-                  const pct = a.v ? (a.v / ts) * 100 : null;
+                  const corpPct = corpA.v ? (corpA.v / ts) * 100 : null;
                   return (
                     <tr key={gi}>
                       <td>{g.lbl}</td>
                       {activeLocs.map(loc => (
-                        <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(a.v, pct) }} />
+                        <td key={loc} dangerouslySetInnerHTML={{ __html:
+                          loc === 'Consolidated'
+                            ? cellFmtVal(corpA.v, corpPct)
+                            : cellFmtVal(0, 0)
+                        }} />
                       ))}
                     </tr>
                   );
