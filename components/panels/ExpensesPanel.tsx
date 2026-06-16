@@ -177,7 +177,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                 }}
                 options={{
                   responsive: true, maintainAspectRatio: false,
-                  plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } } },
+                  plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, boxWidth: 10 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } } },
                   scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks, maxRotation: 45 } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => fmt$(v as number) } } },
                 }}
               />
@@ -197,7 +197,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                 options={{
                   responsive: true, maintainAspectRatio: false, cutout: '58%',
                   plugins: {
-                    legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, padding: 8, boxWidth: 10 } },
+                    legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, padding: 6, boxWidth: 8 } },
                     tooltip: { ...tip, callbacks: { label: c => ` ${c.label}: ${fmt$(c.raw as number)}` } },
                   },
                 }}
@@ -220,7 +220,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                   }}
                   options={{
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${(c.raw as number)?.toFixed(1)}%` } } },
+                    plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, boxWidth: 10 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${(c.raw as number)?.toFixed(1)}%` } } },
                     scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => v + '%' } } },
                   }}
                 />

@@ -151,7 +151,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } } },
+                plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, boxWidth: 10 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } } },
                 scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks, maxRotation: 45 } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => fmt$(v as number) } } },
               }}
             />
@@ -200,7 +200,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                  legend: { display: true, labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } },
+                  legend: { display: true, labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, boxWidth: 10 } },
                   tooltip: { backgroundColor: '#ffffff', borderColor: 'rgba(124,58,237,0.2)', borderWidth: 1, titleColor: '#1a1f2e', bodyColor: '#374151', padding: 10, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } },
                 },
                 scales: {

@@ -40,9 +40,9 @@ export default function LocationSelect({ value, onChange }: Props) {
           border: '1px solid rgba(255,255,255,0.2)',
           color: '#fff',
           fontFamily: 'Montserrat, sans-serif',
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 500,
-          padding: '7px 30px 7px 12px',
+          padding: '6px 28px 6px 10px',
           borderRadius: 7,
           cursor: 'pointer',
           outline: 'none',
@@ -77,8 +77,8 @@ export default function LocationSelect({ value, onChange }: Props) {
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{
-                padding: '8px 14px',
-                fontSize: 13,
+                padding: '7px 14px',
+                fontSize: 12,
                 fontWeight: opt.value === value ? 600 : 400,
                 color: opt.value === value ? '#7c3aed' : '#1a1f2e',
                 background: opt.value === value ? '#f5f0ff' : 'transparent',

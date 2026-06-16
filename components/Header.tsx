@@ -37,7 +37,7 @@ export default function Header({ curEntity, curPeriod, activeTab, onEntityChange
     <div className="hdr">
       <div className="hdr-brand">
         <div className="hdr-logo">
-          <Image src="/rasa-logo.png" alt="RASA Logo" height={40} width={150} style={{ height: 40, width: 'auto' }} priority />
+          <Image src="/rasa-logo.png" alt="RASA Logo" height={32} width={120} style={{ height: 32, width: 'auto' }} priority />
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -62,7 +62,7 @@ export default function Header({ curEntity, curPeriod, activeTab, onEntityChange
         </div>
 
         <div className="hdr-kutlerri">
-          <Image src="/kutlerri-logo.png" alt="Kutlerri Logo" height={34} width={130} style={{ height: 34, width: 'auto' }} priority />
+          <Image src="/kutlerri-logo.png" alt="Kutlerri Logo" height={28} width={120} style={{ height: 28, width: 'auto' }} priority />
         </div>
 
         <button className="logout-btn" onClick={onLogout}>Log out</button>
