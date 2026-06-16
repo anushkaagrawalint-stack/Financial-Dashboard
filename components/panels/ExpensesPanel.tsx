@@ -1,0 +1,290 @@
+'use client';
+
+import '@/lib/chartSetup';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { useMemo, useState } from 'react';
+import type { DashboardData } from '@/lib/types';
+import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, varCls, hasBudget } from '@/lib/utils';
+import KpiCard from '@/components/KpiCard';
+import { grd, tip } from '@/lib/chartSetup';
+
+interface Props {
+  D: DashboardData;
+  curEntity: string;
+  curPeriod: string;
+}
+
+interface ExpenseItem { lbl: string; key: string; }
+interface ExpenseCfg {
+  title: string;
+  color: string;
+  totalKey: string;
+  items: ExpenseItem[];
+  useEntity?: string;
+}
+
+const CFGS: Record<string, ExpenseCfg> = {
+  cogs: {
+    title: 'Cost of Goods Sold', color: '#ef4444', totalKey: 'Total Cost of Goods Sold',
+    items: [
+      { lbl: 'Food Costs', key: 'Total Food Costs' },
+      { lbl: 'Beverage Costs', key: 'Total Beverage Costs' },
+      { lbl: 'Paper Costs', key: 'Total Paper Costs' },
+      { lbl: 'Waste Costs', key: 'Total Waste Costs' },
+      { lbl: 'Freight & Other', key: 'COGS - Freight, Delivery, & Sales Tax' },
+    ],
+  },
+  labor: {
+    title: 'Labor & Payroll', color: '#f59e0b', totalKey: 'Total Payroll Expenses',
+    items: [
+      { lbl: 'Management', key: 'Management' },
+      { lbl: 'Hourly', key: 'Hourly' },
+      { lbl: 'Overtime', key: 'Overtime' },
+      { lbl: 'Bonus', key: 'Bonus' },
+      { lbl: 'Payroll Taxes', key: 'Total Payroll Taxes' },
+      { lbl: 'Payroll Processing Fee', key: 'Payroll Processing Fee' },
+      { lbl: 'Health Insurance', key: 'Health Insurance' },
+    ],
+  },
+  opex: {
+    title: 'Operating Expenses', color: '#8b5cf6', totalKey: 'Total Operating Expense',
+    items: [
+      { lbl: 'Supplies', key: 'Total Supplies' },
+      { lbl: 'Marketing', key: 'Total Marketing' },
+      { lbl: 'Delivery Fees', key: 'Total Delivery Fees' },
+      { lbl: '3rd Party Fees', key: 'Total Third-Party Fees' },
+      { lbl: 'Credit Card Fees', key: 'Total Credit Card Fees' },
+      { lbl: 'Insurance', key: 'Total Insurance' },
+      { lbl: 'Repairs & Maintenance', key: 'Total Repairs & Maintenance' },
+      { lbl: 'Other Expenses', key: 'Total Other Expenses' },
+    ],
+  },
+  occupancy: {
+    title: 'Occupancy', color: '#60a5fa', totalKey: 'Total Occupancy Cost',
+    items: [
+      { lbl: 'Rent Expense', key: 'Rent Expense' },
+      { lbl: 'Common Area Maintenance (CAM)', key: 'Common Area Maintenance (CAM)' },
+      { lbl: 'Real Estate Tax', key: 'Real Estate Tax' },
+      { lbl: 'Utilities', key: 'Total Utilities' },
+    ],
+  },
+  corporate: {
+    title: 'Corporate Overhead', color: '#10b981', totalKey: 'Total Corporate Overhead & Other',
+    useEntity: 'RASA Worldwide',
+    items: [
+      { lbl: 'Corp Payroll', key: 'Total Corp - Payroll Expenses' },
+      { lbl: 'Corp M&E & Travel', key: 'Total Corp - Meals, Entertainment, & Travel' },
+      { lbl: 'Corp Marketing', key: 'Total Corp - Marketing' },
+      { lbl: 'Corp Insurance', key: 'Corp - Insurance Expense' },
+      { lbl: 'Corp IT & Technology', key: 'Corp - IT & Technology' },
+      { lbl: 'Corp Accounting Fees', key: 'Corp - Accounting Fees' },
+      { lbl: 'Corp Legal Fees', key: 'Corp - Legal Fees' },
+      { lbl: 'Corp Other Professional Fees', key: 'Corp - Other Professional Fees' },
+      { lbl: 'Corp Recruiting Fees', key: 'Corp - Recruiting Fees' },
+    ],
+  },
+};
+
+const SUBTABS = [
+  { id: 'cogs', label: 'COGS' },
+  { id: 'labor', label: 'Labor' },
+  { id: 'opex', label: 'OpEx' },
+  { id: 'occupancy', label: 'Occupancy' },
+  { id: 'corporate', label: 'Corporate' },
+];
+
+const COLORS = ['#ef4444','#f59e0b','#8b5cf6','#60a5fa','#10b981','#fb923c','#9f7cef','#84cc16','#f472b6'];
+
+export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
+  const [curSub, setCurSub] = useState('cogs');
+  const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
+  const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
+  const showBud = hasBudget(D, curEntity, idx);
+
+  const cfg = CFGS[curSub];
+  const UE = cfg.useEntity || curEntity;
+  const ts = agg(D, curEntity, 'Total Sales', idx).v || 1;
+  const totAgg = agg(D, UE, cfg.totalKey, idx);
+
+  const pctVals = idx.map(i => {
+    const s = D.t12[curEntity]['Total Sales'].v[i] || 1;
+    const v = D.t12[UE][cfg.totalKey]?.v[i];
+    return v != null ? +((v / s) * 100).toFixed(2) : null;
+  });
+  const bPctVals = idx.map(i => {
+    const s = D.t12[curEntity]['Total Sales'].b[i] || 1;
+    const v = D.t12[UE][cfg.totalKey]?.b[i];
+    return v != null ? +((v / s) * 100).toFixed(2) : null;
+  });
+  const pyPctVals = idx.map(i => {
+    const s = D.t12[curEntity]['Total Sales'].py[i] || 1;
+    const v = D.t12[UE][cfg.totalKey]?.py[i];
+    return v != null ? +((v / s) * 100).toFixed(2) : null;
+  });
+
+  const donutVals = cfg.items.map(it => Math.abs(agg(D, UE, it.key, idx).v || 0));
+  const ta = agg(D, UE, cfg.totalKey, idx);
+  const tPct = ta.v ? (ta.v / ts) * 100 : null;
+
+  return (
+    <div className="panel active" id="panel-expenses">
+      <div className="subtabs">
+        {SUBTABS.map(st => (
+          <div
+            key={st.id}
+            className={`subtab${curSub === st.id ? ' active' : ''}`}
+            onClick={() => setCurSub(st.id)}
+          >
+            {st.label}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div className="kpis">
+          <KpiCard label={`Total ${cfg.title}`} valStr={fmt$(totAgg.v)} accent subs={[
+            { txt: 'Budget: ' + fmt$(totAgg.b), cls: totAgg.b != null ? varCls(totAgg.v - totAgg.b, true) : '' },
+            { txt: 'PY: ' + fmt$(totAgg.py), cls: totAgg.py != null ? varCls(totAgg.v - totAgg.py, true) : '' },
+          ]} />
+          {cfg.items.slice(0, 4).map(it => {
+            const a = agg(D, UE, it.key, idx);
+            return (
+              <KpiCard key={it.key} label={it.lbl} valStr={fmt$(a.v)} subs={[
+                { txt: 'Budget: ' + fmt$(a.b), cls: a.b != null ? varCls(a.v - a.b, true) : '' },
+                { txt: 'PY: ' + fmt$(a.py), cls: a.py != null ? varCls(a.v - a.py, true) : '' },
+              ]} />
+            );
+          })}
+        </div>
+
+        <div className="cgrid" style={{ marginBottom: 16 }}>
+          <div className="ccard" style={{ gridColumn: '1/-1' }}>
+            <div className="ccard-hdr">
+              <div>
+                <div className="ccard-title">{cfg.title} — Grouped Trend</div>
+                <div className="ccard-sub">Actual vs Budget vs Prior Year</div>
+              </div>
+            </div>
+            <div className="cwrap tall">
+              <Bar
+                data={{
+                  labels,
+                  datasets: [
+                    { label: 'Actual', data: idx.map(i => D.t12[UE][cfg.totalKey]?.v[i]), backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                    { label: 'Budget', data: idx.map(i => D.t12[UE][cfg.totalKey]?.b[i]), backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                    { label: 'Prior Year', data: idx.map(i => D.t12[UE][cfg.totalKey]?.py[i]), backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  ],
+                }}
+                options={{
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${fmt$(c.raw as number)}` } } },
+                  scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks, maxRotation: 45 } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => fmt$(v as number) } } },
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="cgrid-pair">
+          <div className="ccard">
+            <div className="ccard-hdr"><div><div className="ccard-title">Breakdown — Selected Period</div></div></div>
+            <div className="cwrap pair">
+              <Doughnut
+                data={{
+                  labels: cfg.items.map(it => it.lbl),
+                  datasets: [{ data: donutVals.map(Math.round), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 4 }],
+                }}
+                options={{
+                  responsive: true, maintainAspectRatio: false, cutout: '58%',
+                  plugins: {
+                    legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, padding: 8, boxWidth: 10 } },
+                    tooltip: { ...tip, callbacks: { label: c => ` ${c.label}: ${fmt$(c.raw as number)}` } },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="ccard">
+            <div className="ccard-hdr"><div><div className="ccard-title">{cfg.title} % of Sales</div></div></div>
+            <div className="cwrap pair">
+              {idx.length === 1 ? (
+                <Bar
+                  data={{
+                    labels,
+                    datasets: [
+                      { label: 'Actual', data: pctVals, backgroundColor: '#9f7cef', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
+                      { label: 'Budget', data: bPctVals, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
+                      { label: 'Prior Year', data: pyPctVals, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7 },
+                    ],
+                  }}
+                  options={{
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#6b7280', font: { family: 'Montserrat', size: 12 }, boxWidth: 12 } }, tooltip: { ...tip, callbacks: { label: c => ` ${c.dataset.label}: ${(c.raw as number)?.toFixed(1)}%` } } },
+                    scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => v + '%' } } },
+                  }}
+                />
+              ) : (
+                <Line
+                  data={{
+                    labels,
+                    datasets: [{
+                      label: cfg.title + ' %',
+                      data: pctVals,
+                      borderColor: cfg.color,
+                      backgroundColor: cfg.color + '18',
+                      fill: true,
+                      borderWidth: 2,
+                      pointRadius: 4,
+                      tension: 0.3,
+                    }],
+                  }}
+                  options={{
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => ` ${(c.raw as number)?.toFixed(1)}%` } } },
+                    scales: { x: { ...grd, grid: { display: false }, ticks: { ...grd.ticks, maxRotation: 45 } }, y: { ...grd, ticks: { ...grd.ticks, callback: v => v + '%' } } },
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="tcard">
+          <div className="tcard-hdr"><span className="tcard-title">{cfg.title} Detail</span></div>
+          <div className="tscroll">
+            <table className="dtable">
+              <thead>
+                <tr>
+                  <th>Line Item</th><th>Actual $</th><th>% of Sales</th>
+                  {showBud && <><th>Budget $</th><th>Bud Var $</th></>}
+                  <th>PY $</th><th>PY Var $</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cfg.items.map(it => {
+                  const a = agg(D, UE, it.key, idx);
+                  const pct = a.v ? (a.v / ts) * 100 : null;
+                  const vB = a.b != null ? a.v - a.b : null;
+                  const vPY = a.py != null ? a.v - a.py : null;
+                  return (
+                    <tr key={it.key}>
+                      <td>{it.lbl}</td><td>{fmt$(a.v)}</td><td>{fmtPct(pct)}</td>
+                      {showBud && <><td>{fmt$(a.b)}</td><td className={varCls(vB, true)}>{fmtVar(vB)}</td></>}
+                      <td>{fmt$(a.py)}</td><td className={varCls(vPY, true)}>{fmtVar(vPY)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="total-row">
+                  <td>Total {cfg.title}</td><td>{fmt$(ta.v)}</td><td>{fmtPct(tPct)}</td>
+                  {showBud && <><td>{fmt$(ta.b)}</td><td className={varCls(ta.b != null ? ta.v - ta.b : null, true)}>{fmtVar(ta.b != null ? ta.v - ta.b : null)}</td></>}
+                  <td>{fmt$(ta.py)}</td><td className={varCls(ta.py != null ? ta.v - ta.py : null, true)}>{fmtVar(ta.py != null ? ta.v - ta.py : null)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
