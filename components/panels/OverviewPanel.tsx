@@ -68,8 +68,8 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     ? [
         { label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
         { label: 'Actual (-)', data: ebitdaNeg, backgroundColor: '#dc2626', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
-        { label: 'Budget', data: ebitdaBudget, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
-        { label: 'Prior Year', data: ebitdaPY, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
+        { label: 'Budget', data: ebitdaBudget, backgroundColor: '#6d28d9', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
+        { label: 'Prior Year', data: ebitdaPY, backgroundColor: '#9ca3af', borderRadius: 3, barPercentage: 0.75, categoryPercentage: 0.85 },
       ]
     : [
         { type: 'bar' as const, label: 'Actual (+)', data: ebitdaPos, backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.9, categoryPercentage: 0.9, order: 2 },
@@ -82,21 +82,21 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     <div className="panel active" id="panel-overview">
       <div className="kpis">
         <KpiCard label="Total Sales" valStr={fmt$(sales.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(sales.v - sales.b)} ${fmtVarPct(pctVar(sales.v, sales.b))}`, cls: varCls(sales.v - sales.b, false) },
-          { txt: `vs LY: ${fmtVar(sales.v - sales.py)} ${fmtVarPct(pctVar(sales.v, sales.py))}`, cls: varCls(sales.v - sales.py, false) },
+          { txt: `vs Budget: ${fmtVar(sales.v - sales.b)} | ${fmtVarPct(pctVar(sales.v, sales.b))}`, cls: varCls(sales.v - sales.b, false) },
+          { txt: `vs LY: ${fmtVar(sales.v - sales.py)} | ${fmtVarPct(pctVar(sales.v, sales.py))}`, cls: varCls(sales.v - sales.py, false) },
         ]} />
         <KpiCard label="Gross Profit" valStr={fmt$(gp.v)} subs={[
           { txt: `vs Budget: ${fmtVar(gp.v - gp.b)}`, cls: varCls(gp.v - gp.b, false) },
           { txt: `vs LY: ${fmtVar(gp.v - gp.py)}`, cls: varCls(gp.v - gp.py, false) },
         ]} />
         <KpiCard label="EBITDA" valStr={fmt$(ebitda.v)} subs={[
-          { txt: `vs Budget: ${fmtVar(ebitda.v - ebitda.b)} ${fmtVarPct(pctVar(ebitda.v, ebitda.b))}`, cls: varCls(ebitda.v - ebitda.b, false) },
-          { txt: `vs LY: ${fmtVar(ebitda.v - ebitda.py)} ${fmtVarPct(pctVar(ebitda.v, ebitda.py))}`, cls: varCls(ebitda.v - ebitda.py, false) },
+          { txt: `vs Budget: ${fmtVar(ebitda.v - ebitda.b)} | ${fmtVarPct(pctVar(ebitda.v, ebitda.b))}`, cls: varCls(ebitda.v - ebitda.b, false) },
+          { txt: `vs LY: ${fmtVar(ebitda.v - ebitda.py)} | ${fmtVarPct(pctVar(ebitda.v, ebitda.py))}`, cls: varCls(ebitda.v - ebitda.py, false) },
         ]} />
         {isAllLocations && (
           <KpiCard label="Corporate Overhead" valStr={fmt$(co.v)} subs={[
-            { txt: `vs Budget: ${fmtVar(co.v - co.b)} ${fmtVarPct(pctVar(co.v, co.b))}`, cls: varCls(co.v - co.b, true) },
-            { txt: `vs LY: ${fmtVar(co.v - co.py)} ${fmtVarPct(pctVar(co.v, co.py))}`, cls: varCls(co.v - co.py, true) },
+            { txt: `vs Budget: ${fmtVar(co.v - co.b)} | ${fmtVarPct(pctVar(co.v, co.b))}`, cls: varCls(co.v - co.b, true) },
+            { txt: `vs LY: ${fmtVar(co.v - co.py)} | ${fmtVarPct(pctVar(co.v, co.py))}`, cls: varCls(co.v - co.py, true) },
           ]} />
         )}
         <KpiCard label="COGS %" valStr={fmtPct(cogsActualPct)} subs={[
@@ -124,8 +124,8 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
                 labels,
                 datasets: [
                   { label: 'Actual', data: idx.map(i => en['Total Sales'].v[i]), backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                  { label: 'Budget', data: idx.map(i => en['Total Sales'].b[i]), backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                  { label: 'Prior Year', data: idx.map(i => en['Total Sales'].py[i]), backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  { label: 'Budget', data: idx.map(i => en['Total Sales'].b[i]), backgroundColor: '#6d28d9', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  { label: 'Prior Year', data: idx.map(i => en['Total Sales'].py[i]), backgroundColor: '#9ca3af', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
                 ],
               }}
               options={{

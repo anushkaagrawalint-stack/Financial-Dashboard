@@ -332,8 +332,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                   labels,
                   datasets: [
                     { label: 'Actual', data: idx.map(i => D.t12[UE][cfg.totalKey]?.v[i]), backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                    { label: 'Budget', data: idx.map(i => D.t12[UE][cfg.totalKey]?.b[i]), backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                    { label: 'Prior Year', data: idx.map(i => D.t12[UE][cfg.totalKey]?.py[i]), backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                    { label: 'Budget', data: idx.map(i => D.t12[UE][cfg.totalKey]?.b[i]), backgroundColor: '#6d28d9', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                    { label: 'Prior Year', data: idx.map(i => D.t12[UE][cfg.totalKey]?.py[i]), backgroundColor: '#9ca3af', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
                   ],
                 }}
                 options={{
@@ -379,8 +379,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                     labels,
                     datasets: [
                       { label: 'Actual', data: pctVals, backgroundColor: '#9f7cef', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
-                      { label: 'Budget', data: bPctVals, backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
-                      { label: 'Prior Year', data: pyPctVals, backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
+                      { label: 'Budget', data: bPctVals, backgroundColor: '#6d28d9', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
+                      { label: 'Prior Year', data: pyPctVals, backgroundColor: '#9ca3af', borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.85 },
                     ],
                   }}
                   options={{

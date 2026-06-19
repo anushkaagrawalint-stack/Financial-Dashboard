@@ -16,46 +16,56 @@ interface Props {
 
 type ChannelId = 'all' | 'inhouse' | 'takeout' | 'delivery' | 'catering' | 'offsites' | 'delfee';
 
-interface SubItem { lbl: string; key: string; }
+// altKey: second key whose value is summed into this sub-item
+interface SubItem { lbl: string; key: string; altKey?: string; }
 interface ChannelCfg { lbl: string; key: string; color: string; subitems: SubItem[] | null; }
 
 const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
-  all: { lbl: 'All Channels', key: 'Total Sales', color: '#9f7cef', subitems: null },
-  inhouse: { lbl: 'In-House', key: 'Total Single Plate In-House Sales', color: '#9f7cef', subitems: [
-    { lbl: 'Food', key: 'Food' },
+  all:      { lbl: 'All Channels',  key: 'Total Sales',                    color: '#9f7cef', subitems: null },
+  inhouse:  { lbl: 'In-House',      key: 'Total Single Plate In-House Sales', color: '#9f7cef', subitems: [
+    { lbl: 'Food',        key: 'Food' },
     { lbl: 'N/A Beverage', key: 'N/A Beverage' },
-    { lbl: 'Beer', key: 'Beer' },
-    { lbl: 'Liquor', key: 'Liquor' },
-    { lbl: 'Wine', key: 'Wine' },
-    { lbl: 'Retail', key: 'Retail' },
+    { lbl: 'Beer',        key: 'Beer' },
+    { lbl: 'Liquor',      key: 'Liquor' },
+    { lbl: 'Wine',        key: 'Wine' },
+    { lbl: 'Retail',      key: 'Retail' },
   ]},
-  takeout: { lbl: 'Takeout', key: 'Total Takeout Sales', color: '#3a7be0', subitems: [
-    { lbl: 'RASA App', key: 'Takeout Sales - RASA App' },
-    { lbl: 'DoorDash', key: 'Takeout Sales - DoorDash' },
-    { lbl: 'GrubHub', key: 'Takeout Sales - GrubHub' },
-    { lbl: 'Uber Eats', key: 'Takeout Sales - Uber Eats' },
+  takeout:  { lbl: 'Takeout',       key: 'Total Takeout Sales',             color: '#3a7be0', subitems: [
+    { lbl: 'RASA Takeout',   key: 'Takeout Sales - RASA App',      altKey: 'Takeout Sales - RASA Website' },
+    { lbl: 'DoorDash',       key: 'Takeout Sales - DoorDash' },
+    { lbl: 'GrubHub',        key: 'Takeout Sales - GrubHub' },
+    { lbl: 'Uber Eats',      key: 'Takeout Sales - Uber Eats' },
     { lbl: 'Too Good To Go', key: 'Takeout Sales - Too Good To Go' },
-    { lbl: 'RASA Website', key: 'Takeout Sales - RASA Website' },
   ]},
-  delivery: { lbl: 'Delivery', key: 'Total Delivery Sales', color: '#10b981', subitems: [
-    { lbl: 'DoorDash', key: 'Delivery Sales - DoorDash' },
-    { lbl: 'GrubHub', key: 'Delivery Sales - GrubHub' },
-    { lbl: 'Uber Eats', key: 'Delivery Sales - Uber Eats' },
-    { lbl: 'RASA App', key: 'Delivery Sales - RASA App' },
-    { lbl: 'RASA Website', key: 'Delivery Sales - RASA Website' },
+  delivery: { lbl: 'Delivery',      key: 'Total Delivery Sales',            color: '#10b981', subitems: [
+    { lbl: 'RASA Delivery',      key: 'Delivery Sales - RASA App',      altKey: 'Delivery Sales - RASA Website' },
+    { lbl: 'DoorDash',           key: 'Delivery Sales - DoorDash' },
+    { lbl: 'GrubHub',            key: 'Delivery Sales - GrubHub' },
+    { lbl: 'Uber Eats',          key: 'Delivery Sales - Uber Eats' },
     { lbl: 'Hungry Marketplace', key: 'Delivery Sales - Hungry Marketplace' },
-    { lbl: 'Google', key: 'Delivery Sales - Google' },
+    { lbl: 'Google',             key: 'Delivery Sales - Google' },
   ]},
-  catering: { lbl: 'Catering', key: 'Total Catering Sales', color: '#8b5cf6', subitems: [
-    { lbl: 'RASA Catering', key: 'Catering Sales - RASA Website' },
-    { lbl: 'EzCater', key: 'Catering Sales - EZ Cater' },
+  catering: { lbl: 'Catering',      key: 'Total Catering Sales',            color: '#8b5cf6', subitems: [
+    { lbl: 'RASA Catering',  key: 'Catering Sales - RASA Website' },
+    { lbl: 'EzCater',        key: 'Catering Sales - EZ Cater' },
     { lbl: 'Other 3rd Party', key: 'Total Catering Sales - Other 3rd Party' },
   ]},
-  offsites: { lbl: 'Offsites', key: 'Total Offsites', color: '#f59e0b', subitems: null },
-  delfee: { lbl: 'Delivery Fee', key: 'Total Delivery Fee Income', color: '#f472b6', subitems: null },
+  offsites: { lbl: 'Offsites',      key: 'Total Offsites',                  color: '#f59e0b', subitems: [
+    { lbl: 'Fooda',         key: 'Offsites - Fooda' },
+    { lbl: 'Aramark',       key: 'Offsites - Aramark' },
+    { lbl: 'Eurest',        key: 'Offsites - Eurest' },
+    { lbl: 'Metz Corp',     key: 'Offsites - Metz Corp' },
+    { lbl: 'Guest Services', key: 'Offsites - Guest Services' },
+    { lbl: 'Cureate',       key: 'Offsites - Cureate' },
+    { lbl: 'Compass',       key: 'Offsites - Compass' },
+    { lbl: 'Taher',         key: 'Offsites - Taher' },
+  ]},
+  delfee:   { lbl: 'Delivery Fee',  key: 'Total Delivery Fee Income',       color: '#f472b6', subitems: null },
 };
 
 const ALL_CHANNELS: ChannelId[] = ['inhouse', 'takeout', 'delivery', 'catering', 'offsites', 'delfee'];
+
+const DEDUCTION_KEYS = ['Total Discounts / Refunds', 'Sales Adjustments', 'Open App Sales Adjustments', 'Open Tickets'];
 
 export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
   const [selCh, setSelCh] = useState<ChannelId>('all');
@@ -66,44 +76,58 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
   const cfg = CHANNEL_CFGS[selCh];
   const salesAgg = agg(D, curEntity, 'Total Sales', idx);
 
+  function subItemAgg(sub: SubItem) {
+    const a = agg(D, curEntity, sub.key, idx);
+    if (!sub.altKey) return a;
+    const b = agg(D, curEntity, sub.altKey, idx);
+    return { v: a.v + b.v, b: a.b + b.b, py: a.py + b.py };
+  }
+
+  function deductionAgg() {
+    const parts = DEDUCTION_KEYS.map(k => agg(D, curEntity, k, idx));
+    return {
+      v:  parts.reduce((s, a) => s + a.v,  0),
+      b:  parts.reduce((s, a) => s + a.b,  0),
+      py: parts.reduce((s, a) => s + a.py, 0),
+    };
+  }
+
   // KPI cards
   const kpiCards = () => {
     if (selCh === 'all') {
-      const totalA = salesAgg;
-      const cards = [
-        <KpiCard key="total" label="Total Sales" valStr={fmt$(totalA.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(totalA.v - totalA.b)} ${fmtVarPct(pctVar(totalA.v, totalA.b))}`, cls: varCls(totalA.v - totalA.b, false) },
-          { txt: `vs LY: ${fmtVar(totalA.v - totalA.py)} ${fmtVarPct(pctVar(totalA.v, totalA.py))}`, cls: varCls(totalA.v - totalA.py, false) },
+      return [
+        <KpiCard key="total" label="Total Sales" valStr={fmt$(salesAgg.v)} accent subs={[
+          { txt: `vs Budget: ${fmtVar(salesAgg.v - salesAgg.b)} | ${fmtVarPct(pctVar(salesAgg.v, salesAgg.b))}`, cls: varCls(salesAgg.v - salesAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(salesAgg.v - salesAgg.py)} | ${fmtVarPct(pctVar(salesAgg.v, salesAgg.py))}`, cls: varCls(salesAgg.v - salesAgg.py, false) },
         ]} />,
         ...ALL_CHANNELS.map(chId => {
           const chCfg = CHANNEL_CFGS[chId];
           const a = agg(D, curEntity, chCfg.key, idx);
           return (
             <KpiCard key={chId} label={chCfg.lbl} valStr={fmt$(a.v)} subs={[
-              { txt: `vs Budget: ${fmtVar(a.v - a.b)} ${fmtVarPct(pctVar(a.v, a.b))}`, cls: a.b != null ? varCls(a.v - a.b, false) : '' },
-              { txt: `vs LY: ${fmtVar(a.v - a.py)} ${fmtVarPct(pctVar(a.v, a.py))}`, cls: a.py != null ? varCls(a.v - a.py, false) : '' },
+              { txt: `vs Budget: ${fmtVar(a.v - a.b)} | ${fmtVarPct(pctVar(a.v, a.b))}`, cls: varCls(a.v - a.b, false) },
+              { txt: `vs LY: ${fmtVar(a.v - a.py)} | ${fmtVarPct(pctVar(a.v, a.py))}`, cls: varCls(a.v - a.py, false) },
             ]} />
           );
         }),
       ];
-      return cards;
     } else {
       const chA = agg(D, curEntity, cfg.key, idx);
       const totalCard = (
         <KpiCard key="ch-total" label={cfg.lbl} valStr={fmt$(chA.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(chA.v - chA.b)} ${fmtVarPct(pctVar(chA.v, chA.b))}`, cls: chA.b != null ? varCls(chA.v - chA.b, false) : '' },
-          { txt: `vs LY: ${fmtVar(chA.v - chA.py)} ${fmtVarPct(pctVar(chA.v, chA.py))}`, cls: chA.py != null ? varCls(chA.v - chA.py, false) : '' },
+          { txt: `vs Budget: ${fmtVar(chA.v - chA.b)} | ${fmtVarPct(pctVar(chA.v, chA.b))}`, cls: varCls(chA.v - chA.b, false) },
+          { txt: `vs LY: ${fmtVar(chA.v - chA.py)} | ${fmtVarPct(pctVar(chA.v, chA.py))}`, cls: varCls(chA.v - chA.py, false) },
         ]} />
       );
       if (!cfg.subitems) return [totalCard];
       const subCards = cfg.subitems
         .map(sub => {
-          const a = agg(D, curEntity, sub.key, idx);
+          const a = subItemAgg(sub);
           if (a.v === 0 && a.py === 0) return null;
           return (
             <KpiCard key={sub.key} label={sub.lbl} valStr={fmt$(a.v)} subs={[
-              { txt: `vs Budget: ${fmtVar(a.v - a.b)} ${fmtVarPct(pctVar(a.v, a.b))}`, cls: a.b != null ? varCls(a.v - a.b, false) : '' },
-              { txt: `vs LY: ${fmtVar(a.v - a.py)} ${fmtVarPct(pctVar(a.v, a.py))}`, cls: a.py != null ? varCls(a.v - a.py, false) : '' },
+              { txt: `vs Budget: ${fmtVar(a.v - a.b)} | ${fmtVarPct(pctVar(a.v, a.b))}`, cls: varCls(a.v - a.b, false) },
+              { txt: `vs LY: ${fmtVar(a.v - a.py)} | ${fmtVarPct(pctVar(a.v, a.py))}`, cls: varCls(a.v - a.py, false) },
             ]} />
           );
         })
@@ -124,7 +148,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
           <div className="ccard-hdr">
             <div>
               <div className="ccard-title">Channel Mix</div>
-              <div className="ccard-sub">% of total sales — selected period</div>
+              <div className="ccard-sub">% of gross revenue (excl. deductions) — selected period</div>
             </div>
           </div>
           <div className="cwrap tall">
@@ -148,9 +172,9 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
     } else if (cfg.subitems) {
       const chA = agg(D, curEntity, cfg.key, idx);
       const chTotal = chA.v || 1;
-      const subVals = cfg.subitems.map(sub => Math.max(agg(D, curEntity, sub.key, idx).v || 0, 0));
+      const subVals = cfg.subitems.map(sub => Math.max(subItemAgg(sub).v || 0, 0));
       const subLabels = cfg.subitems.map((sub, i) => `${sub.lbl} (${((subVals[i] / chTotal) * 100).toFixed(1)}%)`);
-      const subColors = ['#9f7cef','#3a7be0','#10b981','#8b5cf6','#f59e0b','#f472b6','#ef4444'];
+      const subColors = ['#9f7cef', '#3a7be0', '#10b981', '#8b5cf6', '#f59e0b', '#f472b6', '#ef4444', '#84cc16'];
       return (
         <div className="ccard" style={{ gridColumn: '1/-1' }}>
           <div className="ccard-hdr">
@@ -184,28 +208,39 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
   // Channel detail table rows
   const tableRows = () => {
     if (selCh === 'all') {
-      return ALL_CHANNELS.map(chId => {
-        const chCfg = CHANNEL_CFGS[chId];
-        const a = agg(D, curEntity, chCfg.key, idx);
-        return (
-          <tr key={chId}>
-            <td>{chCfg.lbl}</td>
-            <td>{fmt$(a.v)}</td>
-            <td>{fmt$(a.py)}</td>
-            <td className={varCls(a.v - a.py, false)}>{fmtVarPct(pctVar(a.v, a.py))}</td>
-            <td>{a.b != null ? fmt$(a.b) : '—'}</td>
-            <td className={varCls(a.v - a.b, false)}>{fmtVarPct(pctVar(a.v, a.b))}</td>
-          </tr>
-        );
-      });
+      const deductA = deductionAgg();
+      return [
+        ...ALL_CHANNELS.map(chId => {
+          const chCfg = CHANNEL_CFGS[chId];
+          const a = agg(D, curEntity, chCfg.key, idx);
+          return (
+            <tr key={chId}>
+              <td>{chCfg.lbl}</td>
+              <td>{fmt$(a.v)}</td>
+              <td>{fmt$(a.py)}</td>
+              <td className={varCls(a.v - a.py, false)}>{fmtVarPct(pctVar(a.v, a.py))}</td>
+              <td>{fmt$(a.b)}</td>
+              <td className={varCls(a.v - a.b, false)}>{fmtVarPct(pctVar(a.v, a.b))}</td>
+            </tr>
+          );
+        }),
+        <tr key="deductions" style={{ fontStyle: 'italic', opacity: 0.85 }}>
+          <td>Discounts &amp; Adjustments</td>
+          <td>{fmt$(deductA.v)}</td>
+          <td>{fmt$(deductA.py)}</td>
+          <td className={varCls(deductA.v - deductA.py, false)}>{fmtVarPct(pctVar(deductA.v, deductA.py))}</td>
+          <td>{fmt$(deductA.b)}</td>
+          <td className={varCls(deductA.v - deductA.b, false)}>{fmtVarPct(pctVar(deductA.v, deductA.b))}</td>
+        </tr>,
+      ];
     } else if (cfg.subitems) {
       return cfg.subitems
         .filter(sub => {
-          const a = agg(D, curEntity, sub.key, idx);
+          const a = subItemAgg(sub);
           return !(a.v === 0 && a.py === 0);
         })
         .map(sub => {
-          const a = agg(D, curEntity, sub.key, idx);
+          const a = subItemAgg(sub);
           return (
             <tr key={sub.key}>
               <td>{sub.lbl}</td>
@@ -235,7 +270,6 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
           <option value="delivery">Delivery</option>
           <option value="catering">Catering</option>
           <option value="offsites">Offsites</option>
-          <option value="delfee">Delivery Fee</option>
         </select>
       </div>
 
@@ -257,9 +291,9 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               data={{
                 labels,
                 datasets: [
-                  { label: 'Actual', data: idx.map(i => en[cfg.key]?.v[i]), backgroundColor: cfg.color, borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                  { label: 'Budget', data: idx.map(i => en[cfg.key]?.b[i]), backgroundColor: 'rgba(159,124,239,.22)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
-                  { label: 'Prior Year', data: idx.map(i => en[cfg.key]?.py[i]), backgroundColor: 'rgba(107,114,128,.25)', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  { label: 'Actual',     data: idx.map(i => en[cfg.key]?.v[i]), backgroundColor: '#9f7cef', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  { label: 'Budget',     data: idx.map(i => en[cfg.key]?.b[i]), backgroundColor: '#6d28d9', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
+                  { label: 'Prior Year', data: idx.map(i => en[cfg.key]?.py[i]), backgroundColor: '#9ca3af', borderRadius: 3, barPercentage: 0.6, categoryPercentage: 0.7 },
                 ],
               }}
               options={{

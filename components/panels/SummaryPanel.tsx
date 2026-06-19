@@ -74,16 +74,16 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
     <div className="panel active" id="panel-summary">
       <div className="kpis">
         <KpiCard label="Total Sales" valStr={fmt$(salesAgg.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(salesAgg.v - salesAgg.b)} ${fmtVarPct(pctVar(salesAgg.v, salesAgg.b))}`, cls: varCls(salesAgg.v - salesAgg.b, false) },
-          { txt: `vs LY: ${fmtVar(salesAgg.v - salesAgg.py)} ${fmtVarPct(pctVar(salesAgg.v, salesAgg.py))}`, cls: varCls(salesAgg.v - salesAgg.py, false) },
+          { txt: `vs Budget: ${fmtVar(salesAgg.v - salesAgg.b)} | ${fmtVarPct(pctVar(salesAgg.v, salesAgg.b))}`, cls: varCls(salesAgg.v - salesAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(salesAgg.v - salesAgg.py)} | ${fmtVarPct(pctVar(salesAgg.v, salesAgg.py))}`, cls: varCls(salesAgg.v - salesAgg.py, false) },
         ]} />
         <KpiCard label="Gross Profit" valStr={fmt$(gpAgg.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(gpAgg.v - gpAgg.b)} ${fmtVarPct(pctVar(gpAgg.v, gpAgg.b))}`, cls: varCls(gpAgg.v - gpAgg.b, false) },
-          { txt: `vs LY: ${fmtVar(gpAgg.v - gpAgg.py)} ${fmtVarPct(pctVar(gpAgg.v, gpAgg.py))}`, cls: varCls(gpAgg.v - gpAgg.py, false) },
+          { txt: `vs Budget: ${fmtVar(gpAgg.v - gpAgg.b)} | ${fmtVarPct(pctVar(gpAgg.v, gpAgg.b))}`, cls: varCls(gpAgg.v - gpAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(gpAgg.v - gpAgg.py)} | ${fmtVarPct(pctVar(gpAgg.v, gpAgg.py))}`, cls: varCls(gpAgg.v - gpAgg.py, false) },
         ]} />
         <KpiCard label="EBITDA" valStr={fmt$(ebitdaAgg.v)} accent subs={[
-          { txt: `vs Budget: ${fmtVar(ebitdaAgg.v - ebitdaAgg.b)} ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.b))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.b, false) },
-          { txt: `vs LY: ${fmtVar(ebitdaAgg.v - ebitdaAgg.py)} ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.py))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.py, false) },
+          { txt: `vs Budget: ${fmtVar(ebitdaAgg.v - ebitdaAgg.b)} | ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.b))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(ebitdaAgg.v - ebitdaAgg.py)} | ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.py))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.py, false) },
         ]} />
         <KpiCard label="EBITDA %" valStr={fmtPct(ebitdaActPct)} accent subs={[
           { txt: `vs Budget: ${fmtVarPct(ebitdaActPct != null && ebitdaBudPct != null ? ebitdaActPct - ebitdaBudPct : null)}`, cls: varCls(ebitdaActPct != null && ebitdaBudPct != null ? ebitdaActPct - ebitdaBudPct : null, false) },
@@ -120,6 +120,14 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
                 const vLY = a.py != null ? a.v - a.py : null;
                 const cls = line.isTotal ? 'total-row' : '';
                 const valCls = a.v < 0 ? 'neg' : (a.v > 0 && line.isTotal ? 'pos' : '');
+                // COGS and Payroll: show percentage-point diff (Actual% − Bud%) not relative %var
+                const isPctLine = line.key === 'Total Cost of Goods Sold' || line.key === 'Total Payroll Expenses';
+                const varBudPct = isPctLine
+                  ? (actPct != null && budPct != null ? actPct - budPct : null)
+                  : pctVar(a.v, a.b);
+                const varLYPct = isPctLine
+                  ? (actPct != null && lyPct != null ? actPct - lyPct : null)
+                  : pctVar(a.v, a.py);
                 return (
                   <tr key={line.key + line.lbl} className={cls} style={{ fontSize: line.hero ? '13px' : undefined }}>
                     <td style={{ paddingLeft: ((line.indent || 0) * 20 + 14) + 'px' }}>{line.lbl}</td>
@@ -128,11 +136,11 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
                     <td>{fmt$(a.b)}</td>
                     <td>{fmtPct(budPct)}</td>
                     <td className={varCls(vBud, !!line.isExp)}>{fmtVar(vBud)}</td>
-                    <td className={varCls(pctVar(a.v, a.b), !!line.isExp)}>{fmtVarPct(pctVar(a.v, a.b))}</td>
+                    <td className={varCls(varBudPct, !!line.isExp)}>{fmtVarPct(varBudPct)}</td>
                     <td>{fmt$(a.py)}</td>
                     <td>{fmtPct(lyPct)}</td>
                     <td className={varCls(vLY, !!line.isExp)}>{fmtVar(vLY)}</td>
-                    <td className={varCls(pctVar(a.v, a.py), !!line.isExp)}>{fmtVarPct(pctVar(a.v, a.py))}</td>
+                    <td className={varCls(varLYPct, !!line.isExp)}>{fmtVarPct(varLYPct)}</td>
                   </tr>
                 );
               })}
