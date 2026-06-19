@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
-import { grd, tip } from '@/lib/chartSetup';
+import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 
 interface Props {
   D: DashboardData;
@@ -160,6 +160,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
                 plugins: {
                   legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, padding: 8, boxWidth: 10 } },
                   tooltip: { backgroundColor: '#ffffff', borderColor: 'rgba(124,58,237,0.2)', borderWidth: 1, titleColor: '#1a1f2e', bodyColor: '#374151', padding: 10, callbacks: { label: c => ` ${(c.label as string).split(' (')[0]}: ${fmt$(c.raw as number)}` } },
+                  datalabels: donutLabelsCfg,
                 },
               }}
             />

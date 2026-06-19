@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
-import { grd, tip } from '@/lib/chartSetup';
+import { grd, tip, donutLabels } from '@/lib/chartSetup';
 
 interface Props {
   D: DashboardData;
@@ -138,6 +138,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
                 plugins: {
                   legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 11 }, padding: 14, boxWidth: 12 } },
                   tooltip: { backgroundColor: '#ffffff', borderColor: 'rgba(124,58,237,0.2)', borderWidth: 1, titleColor: '#1a1f2e', bodyColor: '#374151', padding: 10, callbacks: { label: c => ` ${(c.label as string).split(' (')[0]}: ${fmt$(chVals[c.dataIndex])} (${((chVals[c.dataIndex] / chTotal) * 100).toFixed(1)}%)` } },
+                  datalabels: donutLabels,
                 },
               }}
             />
@@ -169,6 +170,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
                 plugins: {
                   legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 11 }, padding: 14, boxWidth: 12 } },
                   tooltip: { backgroundColor: '#ffffff', borderColor: 'rgba(124,58,237,0.2)', borderWidth: 1, titleColor: '#1a1f2e', bodyColor: '#374151', padding: 10, callbacks: { label: c => ` ${(c.label as string).split(' (')[0]}: ${fmt$(subVals[c.dataIndex])} (${((subVals[c.dataIndex] / chTotal) * 100).toFixed(1)}%)` } },
+                  datalabels: donutLabels,
                 },
               }}
             />

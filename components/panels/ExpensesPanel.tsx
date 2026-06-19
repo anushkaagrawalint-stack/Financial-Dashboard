@@ -6,7 +6,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
-import { grd, tip } from '@/lib/chartSetup';
+import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 
 interface Props {
   D: DashboardData;
@@ -362,6 +362,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                     tooltip: { ...tip, callbacks: { label: isCogsOrLabor(curSub)
                       ? (c => ` ${(c.label as string).split(' (')[0]}: ${c.raw}% of sales`)
                       : (c => ` ${c.label}: ${fmt$(c.raw as number)}`) } },
+                    datalabels: donutLabelsCfg,
                   },
                 }}
               />
