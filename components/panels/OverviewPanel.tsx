@@ -4,7 +4,7 @@ import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useMemo } from 'react';
 import type { DashboardData } from '@/lib/types';
-import { agg, getIdx, getLabels, fmt$, fmtPct, varCls } from '@/lib/utils';
+import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
 
@@ -22,26 +22,17 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
   const sales = agg(D, curEntity, 'Total Sales', idx);
   const gp = agg(D, curEntity, 'Gross Profit', idx);
   const ebitda = agg(D, curEntity, 'EBITDA', idx);
-  const net = agg(D, curEntity, 'Net Income', idx);
   const cogs = agg(D, curEntity, 'Total Cost of Goods Sold', idx);
   const labor = agg(D, curEntity, 'Total Payroll Expenses', idx);
   const ts = sales.v || 1;
 
-  const fcPct = cogs.v != null ? (cogs.v / ts) * 100 : null;
-  const lbPct = labor.v != null ? (labor.v / ts) * 100 : null;
-  const fcPctPY = idx.reduce((s, i) => {
-    const sv = en['Total Sales'].py[i] || 1;
-    return s + (en['Total Cost of Goods Sold'].py[i] || 0) / sv * 100;
-  }, 0) / idx.length;
-  const lbPctPY = idx.reduce((s, i) => {
-    const sv = en['Total Sales'].py[i] || 1;
-    return s + (en['Total Payroll Expenses'].py[i] || 0) / sv * 100;
-  }, 0) / idx.length;
+  const cogsActualPct = cogs.v != null ? (cogs.v / ts) * 100 : null;
+  const cogsBudgetPct = (cogs.b / (sales.b || 1)) * 100;
+  const cogsLYPct = (cogs.py / (sales.py || 1)) * 100;
 
-  const budCls = (a: number, b: number | null) => b != null ? (a - b >= 0 ? 'pos' : 'neg') : '';
-  const cogsB = agg(D, curEntity, 'Total Cost of Goods Sold', idx);
-  const salesB = agg(D, curEntity, 'Total Sales', idx);
-  const laborB = agg(D, curEntity, 'Total Payroll Expenses', idx);
+  const laborActualPct = labor.v != null ? (labor.v / ts) * 100 : null;
+  const laborBudgetPct = (labor.b / (sales.b || 1)) * 100;
+  const laborLYPct = (labor.py / (sales.py || 1)) * 100;
 
   const allIdx = getIdx('all17', D.periods);
   const rangeLabel = idx.length > 1
@@ -49,6 +40,8 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     : D.periods[idx[0]];
 
   const isAllLocations = curEntity === 'Consolidated';
+  const co = agg(D, 'Consolidated', 'Total Corporate Overhead & Other', idx);
+
   const costSlices = [
     { lbl: 'COGS', key: 'Total Cost of Goods Sold', ent: curEntity, color: '#ef4444' },
     { lbl: 'Labor', key: 'Total Payroll Expenses', ent: curEntity, color: '#f59e0b' },
@@ -57,7 +50,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     ...(isAllLocations ? [{ lbl: 'Corporate', key: 'Total Corporate Overhead & Other', ent: 'RASA Worldwide', color: '#10b981' }] : []),
   ];
   const donutVals = costSlices.map(s => Math.abs(agg(D, s.ent, s.key, idx).v || 0));
-  const donutLabels = costSlices.map((s, i) => {
+  const donutLabels = costSlices.map((s) => {
     const v = agg(D, s.ent, s.key, idx).v || 0;
     const pct = ts > 0 ? (v / ts) * 100 : 0;
     return `${s.lbl} (${pct.toFixed(1)}%)`;
@@ -85,48 +78,34 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
         { type: 'line' as const, label: 'Prior Year', data: ebitdaPY, borderColor: 'rgba(100,116,160,.7)', backgroundColor: 'transparent', pointBackgroundColor: 'rgba(100,116,160,.7)', pointRadius: 2, pointHoverRadius: 4, borderWidth: 1.5, tension: 0.3, fill: false, order: 1 },
       ];
 
-  const tableRows = [...allIdx].reverse().map(i => {
-    const s = en['Total Sales'].v[i] || 1;
-    const g = en['Gross Profit'].v[i];
-    const e = en['EBITDA'].v[i];
-    const n = en['Net Income'].v[i];
-    const c = en['Total Cost of Goods Sold'].v[i];
-    const l = en['Total Payroll Expenses'].v[i];
-    return { i, s, g, e, n, c, l };
-  });
-
   return (
     <div className="panel active" id="panel-overview">
       <div className="kpis">
         <KpiCard label="Total Sales" valStr={fmt$(sales.v)} accent subs={[
-          { txt: 'Budget: ' + fmt$(sales.b), cls: budCls(sales.v, sales.b) },
-          { txt: 'PY: ' + fmt$(sales.py), cls: sales.py != null ? varCls(sales.v - sales.py, false) : '' },
+          { txt: `vs Budget: ${fmtVar(sales.v - sales.b)} ${fmtVarPct(pctVar(sales.v, sales.b))}`, cls: varCls(sales.v - sales.b, false) },
+          { txt: `vs LY: ${fmtVar(sales.v - sales.py)} ${fmtVarPct(pctVar(sales.v, sales.py))}`, cls: varCls(sales.v - sales.py, false) },
         ]} />
         <KpiCard label="Gross Profit" valStr={fmt$(gp.v)} subs={[
-          { txt: 'Budget: ' + fmt$(gp.b), cls: budCls(gp.v, gp.b) },
-          { txt: 'PY: ' + fmt$(gp.py), cls: gp.py != null ? varCls(gp.v - gp.py, false) : '' },
+          { txt: `vs Budget: ${fmtVar(gp.v - gp.b)}`, cls: varCls(gp.v - gp.b, false) },
+          { txt: `vs LY: ${fmtVar(gp.v - gp.py)}`, cls: varCls(gp.v - gp.py, false) },
         ]} />
         <KpiCard label="EBITDA" valStr={fmt$(ebitda.v)} subs={[
-          { txt: 'Budget: ' + fmt$(ebitda.b), cls: budCls(ebitda.v, ebitda.b) },
-          { txt: 'PY: ' + fmt$(ebitda.py), cls: ebitda.py != null ? varCls(ebitda.v - ebitda.py, false) : '' },
+          { txt: `vs Budget: ${fmtVar(ebitda.v - ebitda.b)} ${fmtVarPct(pctVar(ebitda.v, ebitda.b))}`, cls: varCls(ebitda.v - ebitda.b, false) },
+          { txt: `vs LY: ${fmtVar(ebitda.v - ebitda.py)} ${fmtVarPct(pctVar(ebitda.v, ebitda.py))}`, cls: varCls(ebitda.v - ebitda.py, false) },
         ]} />
-        <KpiCard label="Net Income" valStr={fmt$(net.v)} subs={[
-          { txt: 'Budget: ' + fmt$(net.b), cls: budCls(net.v, net.b) },
-          { txt: 'PY: ' + fmt$(net.py), cls: net.py != null ? varCls(net.v - net.py, false) : '' },
+        {isAllLocations && (
+          <KpiCard label="Corporate Overhead" valStr={fmt$(co.v)} subs={[
+            { txt: `vs Budget: ${fmtVar(co.v - co.b)} ${fmtVarPct(pctVar(co.v, co.b))}`, cls: varCls(co.v - co.b, true) },
+            { txt: `vs LY: ${fmtVar(co.v - co.py)} ${fmtVarPct(pctVar(co.v, co.py))}`, cls: varCls(co.v - co.py, true) },
+          ]} />
+        )}
+        <KpiCard label="COGS %" valStr={fmtPct(cogsActualPct)} subs={[
+          { txt: `vs Budget: ${fmtVarPct(cogsActualPct != null ? cogsBudgetPct - cogsActualPct : null)}`, cls: varCls(cogsActualPct != null ? cogsBudgetPct - cogsActualPct : null, false) },
+          { txt: `vs LY: ${fmtVarPct(cogsActualPct != null ? cogsLYPct - cogsActualPct : null)}`, cls: varCls(cogsActualPct != null ? cogsLYPct - cogsActualPct : null, false) },
         ]} />
-        <KpiCard label="COGS %" valStr={fmtPct(fcPct)} subs={[
-          {
-            txt: 'Budget: ' + fmtPct(cogsB.b / (salesB.b || 1) * 100),
-            cls: fcPct != null ? (fcPct <= cogsB.b / (salesB.b || 1) * 100 ? 'pos' : 'neg') : '',
-          },
-          { txt: 'PY: ' + fmtPct(fcPctPY), cls: fcPct != null ? (fcPct <= fcPctPY ? 'pos' : 'neg') : '' },
-        ]} />
-        <KpiCard label="Labor %" valStr={fmtPct(lbPct)} subs={[
-          {
-            txt: 'Budget: ' + fmtPct(laborB.b / (salesB.b || 1) * 100),
-            cls: lbPct != null ? (lbPct <= laborB.b / (salesB.b || 1) * 100 ? 'pos' : 'neg') : '',
-          },
-          { txt: 'PY: ' + fmtPct(lbPctPY), cls: lbPct != null ? (lbPct <= lbPctPY ? 'pos' : 'neg') : '' },
+        <KpiCard label="Labor %" valStr={fmtPct(laborActualPct)} subs={[
+          { txt: `vs Budget: ${fmtVarPct(laborActualPct != null ? laborBudgetPct - laborActualPct : null)}`, cls: varCls(laborActualPct != null ? laborBudgetPct - laborActualPct : null, false) },
+          { txt: `vs LY: ${fmtVarPct(laborActualPct != null ? laborLYPct - laborActualPct : null)}`, cls: varCls(laborActualPct != null ? laborLYPct - laborActualPct : null, false) },
         ]} />
       </div>
 
@@ -224,24 +203,28 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
           <table className="dtable">
             <thead>
               <tr>
-                <th>Period</th><th>Revenue</th><th>COGS</th><th>GP</th><th>GP%</th>
-                <th>Labor</th><th>Labor%</th><th>EBITDA</th><th>Net Income</th>
+                <th>Period</th><th>Revenue</th><th>COGS %</th><th>Labor %</th><th>EBITDA</th><th>EBITDA %</th>
               </tr>
             </thead>
             <tbody>
-              {tableRows.map(({ i, s, g, e, n, c, l }) => (
-                <tr key={i}>
-                  <td>{D.periods[i]}</td>
-                  <td>{fmt$(en['Total Sales'].v[i])}</td>
-                  <td>{fmt$(c)}</td>
-                  <td>{fmt$(g)}</td>
-                  <td>{fmtPct(g ? (g / s) * 100 : null)}</td>
-                  <td>{fmt$(l)}</td>
-                  <td>{fmtPct(l ? (l / s) * 100 : null)}</td>
-                  <td className={(e ?? 0) < 0 ? 'neg' : (e ?? 0) > 0 ? 'pos' : ''}>{fmt$(e)}</td>
-                  <td className={(n ?? 0) < 0 ? 'neg' : (n ?? 0) > 0 ? 'pos' : ''}>{fmt$(n)}</td>
-                </tr>
-              ))}
+              {[...allIdx].reverse().map(i => {
+                const svRaw = en['Total Sales'].v[i];
+                const sv = svRaw || 1;
+                const ev = en['EBITDA'].v[i];
+                const eCls = (ev ?? 0) < 0 ? 'neg' : (ev ?? 0) > 0 ? 'pos' : '';
+                const cogsRaw = en['Total Cost of Goods Sold'].v[i];
+                const laborRaw = en['Total Payroll Expenses'].v[i];
+                return (
+                  <tr key={i}>
+                    <td>{D.periods[i]}</td>
+                    <td>{fmt$(svRaw)}</td>
+                    <td>{fmtPct(svRaw && cogsRaw != null ? (cogsRaw / svRaw) * 100 : null)}</td>
+                    <td>{fmtPct(svRaw && laborRaw != null ? (laborRaw / svRaw) * 100 : null)}</td>
+                    <td className={eCls}>{fmt$(ev)}</td>
+                    <td className={eCls}>{fmtPct(svRaw && ev != null ? (ev / sv) * 100 : null)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

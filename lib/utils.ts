@@ -54,8 +54,19 @@ export function fmtPct(v: number | null | undefined): string {
 
 export function fmtVar(v: number | null | undefined): string {
   if (v == null) return '—';
-  if (v >= 0) return '+' + fmt$(v);
+  if (v >= 0) return fmt$(v);
   return '(' + fmt$(Math.abs(v)).replace(/^\(/, '').replace(/\)$/, '') + ')';
+}
+
+export function fmtVarPct(v: number | null | undefined): string {
+  if (v == null) return '—';
+  if (v < 0) return '(' + Math.abs(v).toFixed(1) + '%)';
+  return v.toFixed(1) + '%';
+}
+
+export function pctVar(a: number, b: number | null | undefined): number | null {
+  if (b == null || b === 0) return null;
+  return ((a - b) / Math.abs(b)) * 100;
 }
 
 export function varCls(v: number | null | undefined, isExp: boolean): string {

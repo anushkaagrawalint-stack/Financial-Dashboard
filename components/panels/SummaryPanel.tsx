@@ -4,7 +4,7 @@ import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import { useMemo } from 'react';
 import type { DashboardData } from '@/lib/types';
-import { agg, getIdx, fmt$, fmtPct, fmtVar, varCls, hasBudget } from '@/lib/utils';
+import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
 
@@ -38,16 +38,21 @@ const LINES: PnlLine[] = [
   { lbl: 'Net Income', key: 'Net Income', isTotal: true, hero: true },
 ];
 
-const HEADLINE_KEYS = ['Total Sales', 'Gross Profit', 'EBITDA', 'Net Income'];
-
 export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
   const isAllLocations = curEntity === 'Consolidated';
   const showBud = hasBudget(D, curEntity, idx);
-  const ts = agg(D, curEntity, 'Total Sales', idx).v || 1;
   const rangeLabel = idx.length > 1
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]}`
     : D.periods[idx[0]];
+
+  const salesAgg = agg(D, curEntity, 'Total Sales', idx);
+  const gpAgg = agg(D, curEntity, 'Gross Profit', idx);
+  const ebitdaAgg = agg(D, curEntity, 'EBITDA', idx);
+
+  const ebitdaActPct = salesAgg.v ? (ebitdaAgg.v / salesAgg.v) * 100 : null;
+  const ebitdaBudPct = salesAgg.b ? (ebitdaAgg.b / salesAgg.b) * 100 : null;
+  const ebitdaLYPct = salesAgg.py ? (ebitdaAgg.py / salesAgg.py) * 100 : null;
 
   const wf = [
     { lbl: 'Revenue', key: 'Total Sales', ent: curEntity, color: '#9f7cef', neg: false },
@@ -60,20 +65,30 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
     { lbl: 'Net Income', key: 'Net Income', ent: curEntity, color: agg(D, curEntity, 'Net Income', idx).v >= 0 ? '#10b981' : '#ef4444', neg: false },
   ];
 
+  const totalSalesAgg = agg(D, curEntity, 'Total Sales', idx);
+  const tSalesAct = totalSalesAgg.v || 1;
+  const tSalesBud = totalSalesAgg.b || 1;
+  const tSalesLY = totalSalesAgg.py || 1;
+
   return (
     <div className="panel active" id="panel-summary">
       <div className="kpis">
-        {HEADLINE_KEYS.map(k => {
-          const a = agg(D, curEntity, k, idx);
-          const pct = a.v ? (a.v / ts) * 100 : null;
-          return (
-            <KpiCard key={k} label={k} valStr={fmt$(a.v)} accent subs={[
-              { txt: fmtPct(pct) + ' of sales', cls: '' },
-              { txt: 'Budget: ' + fmt$(a.b), cls: a.b != null ? varCls(a.v - a.b, false) : '' },
-              { txt: 'PY: ' + fmt$(a.py), cls: a.py != null ? varCls(a.v - a.py, false) : '' },
-            ]} />
-          );
-        })}
+        <KpiCard label="Total Sales" valStr={fmt$(salesAgg.v)} accent subs={[
+          { txt: `vs Budget: ${fmtVar(salesAgg.v - salesAgg.b)} ${fmtVarPct(pctVar(salesAgg.v, salesAgg.b))}`, cls: varCls(salesAgg.v - salesAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(salesAgg.v - salesAgg.py)} ${fmtVarPct(pctVar(salesAgg.v, salesAgg.py))}`, cls: varCls(salesAgg.v - salesAgg.py, false) },
+        ]} />
+        <KpiCard label="Gross Profit" valStr={fmt$(gpAgg.v)} accent subs={[
+          { txt: `vs Budget: ${fmtVar(gpAgg.v - gpAgg.b)} ${fmtVarPct(pctVar(gpAgg.v, gpAgg.b))}`, cls: varCls(gpAgg.v - gpAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(gpAgg.v - gpAgg.py)} ${fmtVarPct(pctVar(gpAgg.v, gpAgg.py))}`, cls: varCls(gpAgg.v - gpAgg.py, false) },
+        ]} />
+        <KpiCard label="EBITDA" valStr={fmt$(ebitdaAgg.v)} accent subs={[
+          { txt: `vs Budget: ${fmtVar(ebitdaAgg.v - ebitdaAgg.b)} ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.b))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.b, false) },
+          { txt: `vs LY: ${fmtVar(ebitdaAgg.v - ebitdaAgg.py)} ${fmtVarPct(pctVar(ebitdaAgg.v, ebitdaAgg.py))}`, cls: varCls(ebitdaAgg.v - ebitdaAgg.py, false) },
+        ]} />
+        <KpiCard label="EBITDA %" valStr={fmtPct(ebitdaActPct)} accent subs={[
+          { txt: `vs Budget: ${fmtVarPct(ebitdaActPct != null && ebitdaBudPct != null ? ebitdaActPct - ebitdaBudPct : null)}`, cls: varCls(ebitdaActPct != null && ebitdaBudPct != null ? ebitdaActPct - ebitdaBudPct : null, false) },
+          { txt: `vs LY: ${fmtVarPct(ebitdaActPct != null && ebitdaLYPct != null ? ebitdaActPct - ebitdaLYPct : null)}`, cls: varCls(ebitdaActPct != null && ebitdaLYPct != null ? ebitdaActPct - ebitdaLYPct : null, false) },
+        ]} />
       </div>
 
       <div className="tcard">
@@ -85,9 +100,11 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
           <table className="dtable">
             <thead>
               <tr>
-                <th>Line Item</th><th>Actual $</th><th>% of Sales</th>
-                {showBud && <><th>Budget $</th><th>Bud%</th><th>Var $</th></>}
-                <th>PY $</th><th>PY%</th><th>PY Var $</th>
+                <th>Line Item</th><th>Actual $</th><th>Actual %</th>
+                <th>Budget $</th><th>Budget %</th>
+                <th>Var $ vs Bud</th><th>Var % vs Bud</th>
+                <th>LY $</th><th>LY %</th>
+                <th>Var $ vs LY</th><th>Var % vs LY</th>
               </tr>
             </thead>
             <tbody>
@@ -96,22 +113,26 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
                 const rawA = agg(D, ent, line.key, idx);
                 const isCorp = !!line.useEntity && !isAllLocations;
                 const a = isCorp ? { v: 0, b: 0, py: 0 } : rawA;
-                const salesForPct = agg(D, curEntity, 'Total Sales', idx).v || 1;
-                const pct = a.v ? (a.v / salesForPct) * 100 : null;
-                const bPct = a.b ? (a.b / salesForPct) * 100 : null;
-                const pyPct = a.py ? (a.py / salesForPct) * 100 : null;
-                const vB = a.b != null ? a.v - a.b : null;
-                const vPY = a.py != null ? a.v - a.py : null;
+                const actPct = a.v ? (a.v / tSalesAct) * 100 : null;
+                const budPct = a.b ? (a.b / tSalesBud) * 100 : null;
+                const lyPct = a.py ? (a.py / tSalesLY) * 100 : null;
+                const vBud = a.b != null ? a.v - a.b : null;
+                const vLY = a.py != null ? a.v - a.py : null;
                 const cls = line.isTotal ? 'total-row' : '';
                 const valCls = a.v < 0 ? 'neg' : (a.v > 0 && line.isTotal ? 'pos' : '');
                 return (
                   <tr key={line.key + line.lbl} className={cls} style={{ fontSize: line.hero ? '13px' : undefined }}>
                     <td style={{ paddingLeft: ((line.indent || 0) * 20 + 14) + 'px' }}>{line.lbl}</td>
                     <td className={valCls}>{fmt$(a.v)}</td>
-                    <td>{fmtPct(pct)}</td>
-                    {showBud && <><td>{fmt$(a.b)}</td><td>{fmtPct(bPct)}</td><td className={varCls(vB, !!line.isExp)}>{fmtVar(vB)}</td></>}
-                    <td>{fmt$(a.py)}</td><td>{fmtPct(pyPct)}</td>
-                    <td className={varCls(vPY, !!line.isExp)}>{fmtVar(vPY)}</td>
+                    <td>{fmtPct(actPct)}</td>
+                    <td>{fmt$(a.b)}</td>
+                    <td>{fmtPct(budPct)}</td>
+                    <td className={varCls(vBud, !!line.isExp)}>{fmtVar(vBud)}</td>
+                    <td className={varCls(pctVar(a.v, a.b), !!line.isExp)}>{fmtVarPct(pctVar(a.v, a.b))}</td>
+                    <td>{fmt$(a.py)}</td>
+                    <td>{fmtPct(lyPct)}</td>
+                    <td className={varCls(vLY, !!line.isExp)}>{fmtVar(vLY)}</td>
+                    <td className={varCls(pctVar(a.v, a.py), !!line.isExp)}>{fmtVarPct(pctVar(a.v, a.py))}</td>
                   </tr>
                 );
               })}

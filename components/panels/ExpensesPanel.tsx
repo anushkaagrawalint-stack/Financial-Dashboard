@@ -4,7 +4,7 @@ import '@/lib/chartSetup';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useMemo, useState, useEffect } from 'react';
 import type { DashboardData } from '@/lib/types';
-import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, varCls, hasBudget } from '@/lib/utils';
+import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
 
@@ -95,6 +95,8 @@ const SUBTABS = [
 
 const COLORS = ['#ef4444','#f59e0b','#8b5cf6','#60a5fa','#10b981','#fb923c','#9f7cef','#84cc16','#f472b6'];
 
+const isCogsOrLabor = (sub: string) => sub === 'cogs' || sub === 'labor';
+
 export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   const [curSub, setCurSub] = useState('cogs');
   const isAllLocations = curEntity === 'Consolidated';
@@ -104,12 +106,15 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
     if (!isAllLocations && curSub === 'corporate') setCurSub('cogs');
   }, [isAllLocations, curSub]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
+  // showBud used for chart data; table always shows all columns with '—' for missing
   const showBud = hasBudget(D, curEntity, idx);
 
   const cfg = CFGS[curSub];
   const UE = cfg.useEntity || curEntity;
-  const ts = agg(D, curEntity, 'Total Sales', idx).v || 1;
+  const totalSalesAgg = agg(D, curEntity, 'Total Sales', idx);
+  const ts = totalSalesAgg.v || 1;
   const totAgg = agg(D, UE, cfg.totalKey, idx);
+  const ta = totAgg;
 
   const pctVals = idx.map(i => {
     const s = D.t12[curEntity]['Total Sales'].v[i] || 1;
@@ -127,9 +132,171 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
     return v != null ? +((v / s) * 100).toFixed(2) : null;
   });
 
-  const donutVals = cfg.items.map(it => Math.abs(agg(D, UE, it.key, idx).v || 0));
-  const ta = agg(D, UE, cfg.totalKey, idx);
+  // Donut: for COGS/Labor show % of sales; for others use raw values
+  const donutVals = isCogsOrLabor(curSub)
+    ? cfg.items.map(it => {
+        const v = agg(D, UE, it.key, idx).v || 0;
+        return ts > 0 ? +((Math.abs(v) / ts) * 100).toFixed(1) : 0;
+      })
+    : cfg.items.map(it => Math.abs(agg(D, UE, it.key, idx).v || 0));
+
+  const donutLabels = isCogsOrLabor(curSub)
+    ? cfg.items.map((it, i) => `${it.lbl} (${donutVals[i]}%)`)
+    : cfg.items.map(it => it.lbl);
+
   const tPct = ta.v ? (ta.v / ts) * 100 : null;
+
+  // KPI cards for COGS/Labor: show % of sales as main value
+  const renderKpiCards = () => {
+    if (isCogsOrLabor(curSub)) {
+      const taPct = ta.v ? (ta.v / ts) * 100 : null;
+      const taBudPct = ta.b ? (ta.b / (totalSalesAgg.b || 1)) * 100 : null;
+      const taLYPct = ta.py ? (ta.py / (totalSalesAgg.py || 1)) * 100 : null;
+      return (
+        <>
+          <KpiCard label={`Total ${cfg.title}`} valStr={fmtPct(taPct)} accent subs={[
+            { txt: `vs Budget: ${fmtVarPct(taBudPct != null && taPct != null ? taBudPct - taPct : null)}`, cls: varCls(taBudPct != null && taPct != null ? taBudPct - taPct : null, false) },
+            { txt: `vs LY: ${fmtVarPct(taLYPct != null && taPct != null ? taLYPct - taPct : null)}`, cls: varCls(taLYPct != null && taPct != null ? taLYPct - taPct : null, false) },
+          ]} />
+          {cfg.items.slice(0, 4).map(it => {
+            const a = agg(D, UE, it.key, idx);
+            const aPct = a.v ? (a.v / ts) * 100 : null;
+            const bPct = a.b ? (a.b / (totalSalesAgg.b || 1)) * 100 : null;
+            const pyPct = a.py ? (a.py / (totalSalesAgg.py || 1)) * 100 : null;
+            return (
+              <KpiCard key={it.key} label={it.lbl} valStr={fmtPct(aPct)} subs={[
+                { txt: `vs Budget: ${fmtVarPct(bPct != null && aPct != null ? bPct - aPct : null)}`, cls: varCls(bPct != null && aPct != null ? bPct - aPct : null, false) },
+                { txt: `vs LY: ${fmtVarPct(pyPct != null && aPct != null ? pyPct - aPct : null)}`, cls: varCls(pyPct != null && aPct != null ? pyPct - aPct : null, false) },
+              ]} />
+            );
+          })}
+        </>
+      );
+    } else {
+      return (
+        <>
+          <KpiCard label={`Total ${cfg.title}`} valStr={fmt$(totAgg.v)} accent subs={[
+            { txt: `vs Budget: ${fmtVarPct(pctVar(totAgg.v, totAgg.b))}`, cls: varCls(totAgg.v - totAgg.b, true) },
+            { txt: `vs LY: ${fmtVarPct(pctVar(totAgg.v, totAgg.py))}`, cls: varCls(totAgg.v - totAgg.py, true) },
+          ]} />
+          {cfg.items.slice(0, 4).map(it => {
+            const a = agg(D, UE, it.key, idx);
+            return (
+              <KpiCard key={it.key} label={it.lbl} valStr={fmt$(a.v)} subs={[
+                { txt: `vs Budget: ${fmtVarPct(pctVar(a.v, a.b))}`, cls: varCls(a.v - a.b, true) },
+                { txt: `vs LY: ${fmtVarPct(pctVar(a.v, a.py))}`, cls: varCls(a.v - a.py, true) },
+              ]} />
+            );
+          })}
+        </>
+      );
+    }
+  };
+
+  // Table rendering
+  const renderTable = () => {
+    if (isCogsOrLabor(curSub)) {
+      // Columns: Line Item | Actual $ | Actual % | LY % | Var % vs LY | Budget % | Var % vs Budget
+      return (
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th>Line Item</th><th>Actual $</th><th>Actual %</th>
+              <th>LY %</th><th>Var % vs LY</th>
+              <th>Budget %</th><th>Var % vs Budget</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cfg.items.map(it => {
+              const a = agg(D, UE, it.key, idx);
+              const actualPct = a.v ? (a.v / (totalSalesAgg.v || 1)) * 100 : null;
+              const lyPct = a.py ? (a.py / (totalSalesAgg.py || 1)) * 100 : null;
+              const budgetPct = a.b ? (a.b / (totalSalesAgg.b || 1)) * 100 : null;
+              const varLY = actualPct != null && lyPct != null ? lyPct - actualPct : null;
+              const varBud = actualPct != null && budgetPct != null ? budgetPct - actualPct : null;
+              return (
+                <tr key={it.key}>
+                  <td>{it.lbl}</td>
+                  <td>{fmt$(a.v)}</td>
+                  <td>{fmtPct(actualPct)}</td>
+                  <td>{fmtPct(lyPct)}</td>
+                  <td className={varCls(varLY, false)}>{fmtVarPct(varLY)}</td>
+                  <td>{budgetPct != null ? fmtPct(budgetPct) : '—'}</td>
+                  <td className={budgetPct != null ? varCls(varBud, false) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
+                </tr>
+              );
+            })}
+            {(() => {
+              const actualPct = ta.v ? (ta.v / (totalSalesAgg.v || 1)) * 100 : null;
+              const lyPct = ta.py ? (ta.py / (totalSalesAgg.py || 1)) * 100 : null;
+              const budgetPct = ta.b ? (ta.b / (totalSalesAgg.b || 1)) * 100 : null;
+              const varLY = actualPct != null && lyPct != null ? lyPct - actualPct : null;
+              const varBud = actualPct != null && budgetPct != null ? budgetPct - actualPct : null;
+              return (
+                <tr className="total-row">
+                  <td>Total {cfg.title}</td>
+                  <td>{fmt$(ta.v)}</td>
+                  <td>{fmtPct(actualPct)}</td>
+                  <td>{fmtPct(lyPct)}</td>
+                  <td className={varCls(varLY, false)}>{fmtVarPct(varLY)}</td>
+                  <td>{budgetPct != null ? fmtPct(budgetPct) : '—'}</td>
+                  <td className={budgetPct != null ? varCls(varBud, false) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
+                </tr>
+              );
+            })()}
+          </tbody>
+        </table>
+      );
+    } else {
+      // Columns: Line Item | Actual $ | Actual % | LY $ | Var % vs LY | Budget $ | Var % vs Budget
+      return (
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th>Line Item</th><th>Actual $</th><th>Actual %</th>
+              <th>LY $</th><th>Var % vs LY</th>
+              <th>Budget $</th><th>Var % vs Budget</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cfg.items.map(it => {
+              const a = agg(D, UE, it.key, idx);
+              const actualPct = a.v ? (a.v / (totalSalesAgg.v || 1)) * 100 : null;
+              const varLY = pctVar(a.v, a.py);
+              const varBud = pctVar(a.v, a.b);
+              return (
+                <tr key={it.key}>
+                  <td>{it.lbl}</td>
+                  <td>{fmt$(a.v)}</td>
+                  <td>{fmtPct(actualPct)}</td>
+                  <td>{fmt$(a.py)}</td>
+                  <td className={a.py ? varCls(varLY, true) : ''}>{a.py ? fmtVarPct(varLY) : '—'}</td>
+                  <td>{fmt$(a.b)}</td>
+                  <td className={a.b ? varCls(varBud, true) : ''}>{a.b ? fmtVarPct(varBud) : '—'}</td>
+                </tr>
+              );
+            })}
+            {(() => {
+              const actualPct = ta.v ? (ta.v / (totalSalesAgg.v || 1)) * 100 : null;
+              const varLY = pctVar(ta.v, ta.py);
+              const varBud = pctVar(ta.v, ta.b);
+              return (
+                <tr className="total-row">
+                  <td>Total {cfg.title}</td>
+                  <td>{fmt$(ta.v)}</td>
+                  <td>{fmtPct(actualPct)}</td>
+                  <td>{fmt$(ta.py)}</td>
+                  <td className={ta.py ? varCls(varLY, true) : ''}>{ta.py ? fmtVarPct(varLY) : '—'}</td>
+                  <td>{fmt$(ta.b)}</td>
+                  <td className={ta.b ? varCls(varBud, true) : ''}>{ta.b ? fmtVarPct(varBud) : '—'}</td>
+                </tr>
+              );
+            })()}
+          </tbody>
+        </table>
+      );
+    }
+  };
 
   return (
     <div className="panel active" id="panel-expenses">
@@ -147,19 +314,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
 
       <div>
         <div className="kpis">
-          <KpiCard label={`Total ${cfg.title}`} valStr={fmt$(totAgg.v)} accent subs={[
-            { txt: 'Budget: ' + fmt$(totAgg.b), cls: totAgg.b != null ? varCls(totAgg.v - totAgg.b, true) : '' },
-            { txt: 'PY: ' + fmt$(totAgg.py), cls: totAgg.py != null ? varCls(totAgg.v - totAgg.py, true) : '' },
-          ]} />
-          {cfg.items.slice(0, 4).map(it => {
-            const a = agg(D, UE, it.key, idx);
-            return (
-              <KpiCard key={it.key} label={it.lbl} valStr={fmt$(a.v)} subs={[
-                { txt: 'Budget: ' + fmt$(a.b), cls: a.b != null ? varCls(a.v - a.b, true) : '' },
-                { txt: 'PY: ' + fmt$(a.py), cls: a.py != null ? varCls(a.v - a.py, true) : '' },
-              ]} />
-            );
-          })}
+          {renderKpiCards()}
         </div>
 
         <div className="cgrid" style={{ marginBottom: 16 }}>
@@ -197,14 +352,16 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
             <div className="cwrap pair">
               <Doughnut
                 data={{
-                  labels: cfg.items.map(it => it.lbl),
-                  datasets: [{ data: donutVals.map(Math.round), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 4 }],
+                  labels: donutLabels,
+                  datasets: [{ data: donutVals.map(v => Math.round(v)), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 4 }],
                 }}
                 options={{
                   responsive: true, maintainAspectRatio: false, cutout: '58%',
                   plugins: {
                     legend: { position: 'right', labels: { color: '#6b7280', font: { family: 'Montserrat', size: 10 }, padding: 6, boxWidth: 8 } },
-                    tooltip: { ...tip, callbacks: { label: c => ` ${c.label}: ${fmt$(c.raw as number)}` } },
+                    tooltip: { ...tip, callbacks: { label: isCogsOrLabor(curSub)
+                      ? (c => ` ${(c.label as string).split(' (')[0]}: ${c.raw}% of sales`)
+                      : (c => ` ${c.label}: ${fmt$(c.raw as number)}`) } },
                   },
                 }}
               />
@@ -260,35 +417,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
         <div className="tcard">
           <div className="tcard-hdr"><span className="tcard-title">{cfg.title} Detail</span></div>
           <div className="tscroll">
-            <table className="dtable">
-              <thead>
-                <tr>
-                  <th>Line Item</th><th>Actual $</th><th>% of Sales</th>
-                  {showBud && <><th>Budget $</th><th>Bud Var $</th></>}
-                  <th>PY $</th><th>PY Var $</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cfg.items.map(it => {
-                  const a = agg(D, UE, it.key, idx);
-                  const pct = a.v ? (a.v / ts) * 100 : null;
-                  const vB = a.b != null ? a.v - a.b : null;
-                  const vPY = a.py != null ? a.v - a.py : null;
-                  return (
-                    <tr key={it.key}>
-                      <td>{it.lbl}</td><td>{fmt$(a.v)}</td><td>{fmtPct(pct)}</td>
-                      {showBud && <><td>{fmt$(a.b)}</td><td className={varCls(vB, true)}>{fmtVar(vB)}</td></>}
-                      <td>{fmt$(a.py)}</td><td className={varCls(vPY, true)}>{fmtVar(vPY)}</td>
-                    </tr>
-                  );
-                })}
-                <tr className="total-row">
-                  <td>Total {cfg.title}</td><td>{fmt$(ta.v)}</td><td>{fmtPct(tPct)}</td>
-                  {showBud && <><td>{fmt$(ta.b)}</td><td className={varCls(ta.b != null ? ta.v - ta.b : null, true)}>{fmtVar(ta.b != null ? ta.v - ta.b : null)}</td></>}
-                  <td>{fmt$(ta.py)}</td><td className={varCls(ta.py != null ? ta.v - ta.py : null, true)}>{fmtVar(ta.py != null ? ta.v - ta.py : null)}</td>
-                </tr>
-              </tbody>
-            </table>
+            {renderTable()}
           </div>
         </div>
       </div>
