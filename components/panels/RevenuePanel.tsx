@@ -126,7 +126,6 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
           if (a.v === 0 && a.py === 0) return null;
           return (
             <KpiCard key={sub.key} label={sub.lbl} valStr={fmt$(a.v)} subs={[
-              { txt: `vs Budget: ${fmtVar(a.v - a.b)} | ${fmtVarPct(pctVar(a.v, a.b))}`, cls: varCls(a.v - a.b, false) },
               { txt: `vs LY: ${fmtVar(a.v - a.py)} | ${fmtVarPct(pctVar(a.v, a.py))}`, cls: varCls(a.v - a.py, false) },
             ]} />
           );
@@ -247,8 +246,6 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <td>{fmt$(a.v)}</td>
               <td>{fmt$(a.py)}</td>
               <td className={varCls(a.v - a.py, false)}>{fmtVarPct(pctVar(a.v, a.py))}</td>
-              <td>{a.b != null ? fmt$(a.b) : '—'}</td>
-              <td className={varCls(a.v - a.b, false)}>{fmtVarPct(pctVar(a.v, a.b))}</td>
             </tr>
           );
         });
@@ -316,7 +313,8 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
           <table className="dtable">
             <thead>
               <tr>
-                <th>Channel</th><th>Actual $</th><th>LY $</th><th>Var % vs LY</th><th>Budget $</th><th>Var % vs Budget</th>
+                <th>Channel</th><th>Actual $</th><th>LY $</th><th>Var % vs LY</th>
+                {selCh === 'all' && <><th>Budget $</th><th>Var % vs Budget</th></>}
               </tr>
             </thead>
             <tbody>
@@ -326,8 +324,10 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
                 <td>{fmt$(totalRowData.v)}</td>
                 <td>{fmt$(totalRowData.py)}</td>
                 <td className={varCls(totalRowData.v - totalRowData.py, false)}>{fmtVarPct(pctVar(totalRowData.v, totalRowData.py))}</td>
-                <td>{totalRowData.b != null ? fmt$(totalRowData.b) : '—'}</td>
-                <td className={varCls(totalRowData.v - totalRowData.b, false)}>{fmtVarPct(pctVar(totalRowData.v, totalRowData.b))}</td>
+                {selCh === 'all' && <>
+                  <td>{totalRowData.b != null ? fmt$(totalRowData.b) : '—'}</td>
+                  <td className={varCls(totalRowData.v - totalRowData.b, false)}>{fmtVarPct(pctVar(totalRowData.v, totalRowData.b))}</td>
+                </>}
               </tr>
             </tbody>
           </table>

@@ -24,6 +24,7 @@ const GROUPS: Group[] = [
       { value: 'q3_25', label: 'Q3 2025 (P7–P9)' },
       { value: 'q4_25', label: 'Q4 2025 (P10–P12)' },
       { value: 'q1_26', label: 'Q1 2026 (P1–P3)' },
+      { value: 'q2_26', label: 'Q2 2026 (QTD) (P4–P5)' },
     ],
   },
   {

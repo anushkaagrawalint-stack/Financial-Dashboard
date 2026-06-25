@@ -8,7 +8,7 @@ export function getIdx(sel: string, periods: string[]): number[] {
     ytd26: [12,13,14,15,16],
     last6: [11,12,13,14,15,16],
     last3: [14,15,16],
-    q1_25: [0,1,2], q2_25: [3,4,5], q3_25: [6,7,8], q4_25: [9,10,11], q1_26: [12,13,14],
+    q1_25: [0,1,2], q2_25: [3,4,5], q3_25: [6,7,8], q4_25: [9,10,11], q1_26: [12,13,14], q2_26: [15,16],
   };
   if (map[sel]) return map[sel];
   const i = periods.indexOf(sel);
