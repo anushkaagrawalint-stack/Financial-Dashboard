@@ -57,6 +57,8 @@ const CFGS: Record<string, ExpenseCfg> = {
         { lbl: 'Wine', key: 'Waste - Wine' },
       ]},
       { lbl: 'Freight & Other', key: 'COGS - Freight, Delivery, & Sales Tax' },
+      { lbl: 'Fuel Surcharge', key: 'COGS - Fuel Surcharge' },
+      { lbl: 'Credit for Discounts', key: 'COGS - Credit for Discounts' },
     ],
   },
   labor: {
