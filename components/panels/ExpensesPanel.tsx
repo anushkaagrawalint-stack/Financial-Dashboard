@@ -66,14 +66,7 @@ const CFGS: Record<string, ExpenseCfg> = {
       { lbl: 'Hourly', key: 'Hourly' },
       { lbl: 'Overtime', key: 'Overtime' },
       { lbl: 'Bonus', key: 'Bonus' },
-      { lbl: 'Payroll Taxes', key: 'Total Payroll Taxes', children: [
-        { lbl: 'FICA Tax Expense', key: 'FICA Tax Expense' },
-        { lbl: 'FUTA Tax Expense', key: 'FUTA Tax Expense' },
-        { lbl: 'SUTA Tax Expense (VA)', key: 'SUTA Tax Expense (VA)' },
-        { lbl: 'SUTA Tax Expense (DC)', key: 'SUTA Tax Expense (DC)' },
-        { lbl: 'FL Tax Expense (DC)', key: 'FL Tax Expense (DC)' },
-        { lbl: 'Other Payroll Taxes', key: 'Other Payroll Taxes' },
-      ]},
+      { lbl: 'Payroll Taxes', key: 'Total Payroll Taxes' },
       { lbl: 'Payroll Processing Fee', key: 'Payroll Processing Fee' },
       { lbl: 'Health Insurance', key: 'Health Insurance' },
     ],
@@ -161,17 +154,17 @@ const CFGS: Record<string, ExpenseCfg> = {
     items: [
       { lbl: 'Rent Expense', key: 'Rent Expense' },
       { lbl: 'Common Area Maintenance (CAM)', key: 'Common Area Maintenance (CAM)' },
-      { lbl: 'Public Space Rental', key: 'Public Space Rental' },
       { lbl: 'Insurance - Building', key: 'Insurance - Building' },
-      { lbl: 'Real Estate Tax', key: 'Real Estate Tax' },
-      { lbl: 'Rent - 4/4/5', key: 'Rent - 4/4/5' },
-      { lbl: 'Percentage Rent Expense', key: 'Percentage Rent Expense' },
       { lbl: 'Total Utilities', key: 'Total Utilities', children: [
         { lbl: 'Electric', key: 'Electric' },
         { lbl: 'Gas', key: 'Gas' },
         { lbl: 'Water/Sewer', key: 'Water/Sewer' },
         { lbl: 'Trash', key: 'Trash' },
       ]},
+      { lbl: 'Public Space Rental', key: 'Public Space Rental' },
+      { lbl: 'Real Estate Tax', key: 'Real Estate Tax' },
+      { lbl: 'Rent - 4/4/5', key: 'Rent - 4/4/5' },
+      { lbl: 'Percentage Rent Expense', key: 'Percentage Rent Expense' },
     ],
   },
   corporate: {
@@ -304,7 +297,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
       const hasChildren = !!(it.children && it.children.length > 0);
       const isExpanded = expandedRows.has(it.key);
       const a = agg(D, UE, it.key, idx);
-      if (!hasChildren && a.v === 0 && a.py === 0) continue;
+      if (depth === 0 && !hasChildren && a.v === 0 && a.py === 0) continue;
       const paddingLeft = depth * 20 + 14;
       const fw = depth === 0 ? 600 : 400;
       const chevron = hasChildren
