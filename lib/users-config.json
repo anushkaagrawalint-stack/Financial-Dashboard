@@ -21,13 +21,6 @@
     "createdAt": "2026-07-13T11:23:54.257Z"
   },
   {
-    "id": "160c4046-6ecf-4c83-9cd8-ab683e2b0f93",
-    "email": "test@gmail.com",
-    "passwordHash": "$2b$10$XoAQDF8so5v1dtqR0JlRXuW8xsUZfk87mrjE/M2u6zEJxVoAd7s/a",
-    "role": "viewer",
-    "createdAt": "2026-07-17T10:58:33.218Z"
-  },
-  {
     "id": "d9a609fd-274f-4a4b-873d-ea093c8280a2",
     "email": "dlafontant@rasa.co",
     "passwordHash": "$2b$10$Fh06IOjopAYHzO0Gd.rZw.S3w8swYlaQR2BrvmjXcm1uafOo2lIG2",
