@@ -11,7 +11,7 @@ interface Props {
 
 const ALL_LOCS = ['Ballpark', 'MVT', 'National Landing', 'Mosaic', 'Rockville'];
 
-interface SubItem { lbl: string; key: string; children?: SubItem[]; }
+interface SubItem { lbl: string; key: string; children?: SubItem[]; subKey?: string; }
 interface GrpRow { lbl: string; key: string; sub?: SubItem[]; useEntity?: string; }
 
 function cellFmtVal(v: number | null | undefined, pct: number | null | undefined): string {
@@ -19,11 +19,12 @@ function cellFmtVal(v: number | null | undefined, pct: number | null | undefined
   return fmt$(v) + ' (' + fmtPct(pct) + ')';
 }
 
-function LocCell({ D, loc, dataKey, idx }: { D: DashboardData; loc: string; dataKey: string; idx: number[] }) {
+function LocCell({ D, loc, dataKey, idx, subtractKey }: { D: DashboardData; loc: string; dataKey: string; idx: number[]; subtractKey?: string }) {
   const a = agg(D, loc, dataKey, idx);
+  const v = subtractKey != null ? a.v - agg(D, loc, subtractKey, idx).v : a.v;
   const ts = agg(D, loc, 'Total Sales', idx).v || 1;
-  const pct = a.v != null ? (a.v / ts) * 100 : null;
-  return <td dangerouslySetInnerHTML={{ __html: cellFmtVal(a.v, pct) }} />;
+  const pct = v != null ? (v / ts) * 100 : null;
+  return <td dangerouslySetInnerHTML={{ __html: cellFmtVal(v, pct) }} />;
 }
 
 function GrpRowComp({ D, lbl, dataKey, sub, locs, idx, open, onToggle, openSubs, onToggleSub, useEntity }: {
@@ -34,15 +35,16 @@ function GrpRowComp({ D, lbl, dataKey, sub, locs, idx, open, onToggle, openSubs,
 }) {
   const hasSub = sub && sub.length > 0;
 
-  function renderCell(loc: string, key: string) {
+  function renderCell(loc: string, key: string, subtractKey?: string) {
     if (useEntity) {
       if (loc !== 'Consolidated') return <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(0, 0) }} />;
       const a = agg(D, useEntity, key, idx);
+      const v = subtractKey != null ? a.v - agg(D, useEntity, subtractKey, idx).v : a.v;
       const ts = agg(D, 'Consolidated', 'Total Sales', idx).v || 1;
-      const pct = a.v != null ? (a.v / ts) * 100 : null;
-      return <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(a.v, pct) }} />;
+      const pct = v != null ? (v / ts) * 100 : null;
+      return <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(v, pct) }} />;
     }
-    return <LocCell key={loc} D={D} loc={loc} dataKey={key} idx={idx} />;
+    return <LocCell key={loc} D={D} loc={loc} dataKey={key} idx={idx} subtractKey={subtractKey} />;
   }
 
   const subRows: React.ReactNode[] = [];
@@ -61,7 +63,7 @@ function GrpRowComp({ D, lbl, dataKey, sub, locs, idx, open, onToggle, openSubs,
             }
             {s.lbl}
           </td>
-          {locs.map(loc => renderCell(loc, s.key))}
+          {locs.map(loc => renderCell(loc, s.key, s.subKey))}
         </tr>
       );
       if (hasChildren && isSubOpen) {
@@ -155,7 +157,8 @@ const GROUPS: (GrpRow & { type?: 'total' | 'sec' })[] = [
     { lbl: 'Foodworks', key: 'Catering Sales - Foodworks' }, { lbl: 'Cater Cow', key: 'Catering Sales - Cater Cow' },
     { lbl: 'Territory Foods', key: 'Catering Sales - Territory Foods' }, { lbl: 'Hungry Marketplace', key: 'Catering Sales - Hungry Marketplace' },
     { lbl: 'Sharebite', key: 'Catering Sales - Sharebite' }, { lbl: 'Cater 2 Me', key: 'Catering Sales - Cater 2 Me' },
-    { lbl: 'ZeroCater', key: 'Catering Sales - ZeroCater' }, { lbl: 'Other 3rd Party', key: 'Total Catering Sales - Other 3rd Party' },
+    { lbl: 'ZeroCater', key: 'Catering Sales - ZeroCater' },
+    { lbl: 'Other 3rd Party', key: 'Total Catering Sales - Other 3rd Party', subKey: 'Catering Sales - EZ Cater' },
   ]},
   { lbl: 'Offsites', key: 'Total Offsites', sub: [
     { lbl: 'Fooda', key: 'Offsites - Fooda' }, { lbl: 'Aramark', key: 'Offsites - Aramark' },

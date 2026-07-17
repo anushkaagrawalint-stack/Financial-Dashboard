@@ -17,7 +17,8 @@ interface Props {
 type ChannelId = 'all' | 'inhouse' | 'takeout' | 'delivery' | 'catering' | 'offsites' | 'delfee';
 
 // altKey: second key whose value is summed into this sub-item
-interface SubItem { lbl: string; key: string; altKey?: string; }
+// subKey: second key whose value is subtracted from this sub-item
+interface SubItem { lbl: string; key: string; altKey?: string; subKey?: string; }
 interface ChannelCfg { lbl: string; key: string; color: string; subitems: SubItem[] | null; }
 
 const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
@@ -48,7 +49,7 @@ const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
   catering: { lbl: 'Catering',      key: 'Total Catering Sales',            color: '#8b5cf6', subitems: [
     { lbl: 'RASA Catering',  key: 'Catering Sales - RASA Website' },
     { lbl: 'EzCater',        key: 'Catering Sales - EZ Cater' },
-    { lbl: 'Other 3rd Party', key: 'Total Catering Sales - Other 3rd Party' },
+    { lbl: 'Other 3rd Party', key: 'Total Catering Sales - Other 3rd Party', subKey: 'Catering Sales - EZ Cater' },
   ]},
   offsites: { lbl: 'Offsites',      key: 'Total Offsites',                  color: '#f59e0b', subitems: [
     { lbl: 'Fooda',         key: 'Offsites - Fooda' },
@@ -78,9 +79,16 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
 
   function subItemAgg(sub: SubItem) {
     const a = agg(D, curEntity, sub.key, idx);
-    if (!sub.altKey) return a;
-    const b = agg(D, curEntity, sub.altKey, idx);
-    return { v: a.v + b.v, b: a.b + b.b, py: a.py + b.py };
+    let r = { v: a.v, b: a.b, py: a.py };
+    if (sub.altKey) {
+      const alt = agg(D, curEntity, sub.altKey, idx);
+      r = { v: r.v + alt.v, b: r.b + alt.b, py: r.py + alt.py };
+    }
+    if (sub.subKey) {
+      const s = agg(D, curEntity, sub.subKey, idx);
+      r = { v: r.v - s.v, b: r.b - s.b, py: r.py - s.py };
+    }
+    return r;
   }
 
   function deductionAgg() {
