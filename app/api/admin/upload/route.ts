@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
 import { loadPeriods, DATA_DIR } from '@/lib/periods';
 import { isGitHubConfigured, saveDataFile } from '@/lib/githubStorage';
+import { syncOnUpload } from '@/lib/syncDashboard';
 import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   if (!verifyAdmin(request)) {
@@ -21,8 +23,9 @@ export async function POST(request: Request) {
   if (!file || idxStr === null) return NextResponse.json({ error: 'file and idx required' }, { status: 400 });
   if (!file.name.endsWith('.xlsx')) return NextResponse.json({ error: 'Only .xlsx files accepted' }, { status: 400 });
 
-  const idx    = parseInt(idxStr, 10);
-  const period = (await loadPeriods()).find(p => p.idx === idx);
+  const idx     = parseInt(idxStr, 10);
+  const periods = await loadPeriods();
+  const period  = periods.find(p => p.idx === idx);
   if (!period) return NextResponse.json({ error: `Unknown period index ${idx}` }, { status: 400 });
 
   const buf = Buffer.from(await file.arrayBuffer());
@@ -33,6 +36,9 @@ export async function POST(request: Request) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(path.join(DATA_DIR, period.filename), buf);
   }
+
+  // Auto-sync: update dashboard-data.json for this period immediately
+  await syncOnUpload(period, buf, periods);
 
   return NextResponse.json({ ok: true, period: period.label, filename: period.filename, size: buf.length });
 }

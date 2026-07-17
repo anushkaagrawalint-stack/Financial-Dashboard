@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
 import { loadPeriods, savePeriods, DATA_DIR } from '@/lib/periods';
 import { isGitHubConfigured, saveDataFile } from '@/lib/githubStorage';
+import { syncOnAddPeriod } from '@/lib/syncDashboard';
 import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   if (!verifyAdmin(request)) {
@@ -43,8 +45,11 @@ export async function POST(request: Request) {
     fs.writeFileSync(path.join(DATA_DIR, filename), buf);
   }
 
-  periods.push(newEntry);
-  await savePeriods(periods);
+  const updatedPeriods = [...periods, newEntry];
+  await savePeriods(updatedPeriods);
+
+  // Auto-sync: extend dashboard-data.json with the new period
+  await syncOnAddPeriod(newEntry, buf, updatedPeriods);
 
   return NextResponse.json({ ok: true, period: newEntry });
 }

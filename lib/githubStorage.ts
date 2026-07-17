@@ -110,6 +110,25 @@ export async function saveDataFile(filename: string, buffer: Buffer): Promise<vo
   await putFile(`Data/${filename}`, buffer, `Admin: upload ${filename}`);
 }
 
+// Fetch an xlsx file from GitHub. Returns null if not found.
+// Handles both inline base64 (<1 MB) and download_url (larger files).
+export async function getDataFileBuffer(filename: string): Promise<Buffer | null> {
+  if (!isGitHubConfigured()) return null;
+  const data = await getContents(`Data/${filename}`);
+  if (!data) return null;
+  if (data.content && data.content !== '') {
+    return Buffer.from(data.content.replace(/\n/g, ''), 'base64');
+  }
+  if (data.download_url) {
+    const res = await fetch(data.download_url, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!res.ok) throw new Error(`GitHub download ${filename} failed: ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+  return null;
+}
+
 export async function deleteDataFile(filename: string): Promise<void> {
   const existing = await getContents(`Data/${filename}`);
   if (!existing) return; // already gone
@@ -121,4 +140,23 @@ export async function deleteDataFile(filename: string): Promise<void> {
   if (!res.ok && res.status !== 404) {
     throw new Error(`GitHub DELETE Data/${filename} failed: ${res.status} ${await res.text()}`);
   }
+}
+
+// ── Dashboard data (lib/dashboard-data.json) ─────────────────────────────────
+
+const DASHBOARD_DATA_PATH = 'lib/dashboard-data.json';
+
+export async function getDashboardData<T>(): Promise<T | null> {
+  if (!isGitHubConfigured()) return null;
+  const data = await getContents(DASHBOARD_DATA_PATH);
+  if (!data) return null;
+  try {
+    const text = Buffer.from(data.content.replace(/\n/g, ''), 'base64').toString('utf8');
+    return JSON.parse(text) as T;
+  } catch { return null; }
+}
+
+export async function saveDashboardData(value: unknown): Promise<void> {
+  const buffer = Buffer.from(JSON.stringify(value));
+  await putFile(DASHBOARD_DATA_PATH, buffer, 'Admin: sync dashboard data');
 }
