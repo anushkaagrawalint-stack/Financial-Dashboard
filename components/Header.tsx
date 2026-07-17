@@ -17,24 +17,17 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
-const PERIOD_LABEL_MAP: Record<string, string> = {
-  last12: "Last 12 Periods (P6'25–P5'26)",
-  fy25: 'Full Year 2025 (P1–P12)',
-  ytd26: 'YTD 2026 (P1–P5)',
-  last6: 'Last 6 Periods',
-  last3: 'Last 3 Periods',
-  q1_25: 'Q1 2025 (P1–P3)',
-  q2_25: 'Q2 2025 (P4–P6)',
-  q3_25: 'Q3 2025 (P7–P9)',
-  q4_25: 'Q4 2025 (P10–P12)',
-  q1_26: 'Q1 2026 (P1–P3)',
-};
-
 function getPeriodBadge(curPeriod: string): string {
-  return PERIOD_LABEL_MAP[curPeriod]?.split(' (')[0] ?? curPeriod;
+  if (curPeriod === 'last12') return 'Last 12 Periods';
+  if (curPeriod === 'last6') return 'Last 6 Periods';
+  if (curPeriod === 'last3') return 'Last 3 Periods';
+  if (/^ytd\d{2}$/.test(curPeriod)) return `YTD 20${curPeriod.slice(3)}`;
+  if (/^fy\d{2}$/.test(curPeriod)) return `FY 20${curPeriod.slice(2)}`;
+  if (/^q\d_\d{2}$/.test(curPeriod)) return `Q${curPeriod[1]} 20${curPeriod.slice(3)}`;
+  return curPeriod;
 }
 
-export default function Header({ curEntity, curPeriod, activeTab, onEntityChange, onPeriodChange, onLogout }: HeaderProps) {
+export default function Header({ D, curEntity, curPeriod, activeTab, onEntityChange, onPeriodChange, onLogout }: HeaderProps) {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -53,7 +46,9 @@ export default function Header({ curEntity, curPeriod, activeTab, onEntityChange
             <span className="hdr-title">Financial Dashboard</span>
             <span className="hdr-badge">{getPeriodBadge(curPeriod)}</span>
           </div>
-          <div className="hdr-sub">P1 2025 – P5 2026</div>
+          {D.periods?.length > 0 && (
+            <div className="hdr-sub">{D.periods[0]} – {D.periods[D.periods.length - 1]}</div>
+          )}
         </div>
       </div>
 
@@ -66,7 +61,7 @@ export default function Header({ curEntity, curPeriod, activeTab, onEntityChange
 
           <div className="sel-wrap">
             <span className="sel-label">Period</span>
-            <PeriodSelect value={curPeriod} onChange={onPeriodChange} />
+            <PeriodSelect value={curPeriod} onChange={onPeriodChange} periods={D.periods} />
           </div>
         </div>
 

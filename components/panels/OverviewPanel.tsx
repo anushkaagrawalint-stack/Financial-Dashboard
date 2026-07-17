@@ -34,7 +34,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
   const laborBudgetPct = (labor.b / (sales.b || 1)) * 100;
   const laborLYPct = (labor.py / (sales.py || 1)) * 100;
 
-  const allIdx = getIdx('all17', D.periods);
+  const allIdx = getIdx('all', D.periods);
   const rangeLabel = idx.length > 1
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]} (${idx.length} periods)`
     : D.periods[idx[0]];

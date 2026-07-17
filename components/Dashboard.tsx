@@ -112,7 +112,10 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="footer">Kutlerri Analytics · R365 /· P1 2025 – P5 2026</div>
+      <div className="footer">
+        Kutlerri Analytics · R365 ·{' '}
+        {data.periods.length > 0 ? `${data.periods[0]} – ${data.periods[data.periods.length - 1]}` : ''}
+      </div>
     </>
   );
 }

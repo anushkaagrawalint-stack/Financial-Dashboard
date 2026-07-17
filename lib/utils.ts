@@ -1,18 +1,47 @@
 import type { DashboardData, MetricData } from './types';
 
 export function getIdx(sel: string, periods: string[]): number[] {
-  const map: Record<string, number[]> = {
-    all17: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],
-    last12: [5,6,7,8,9,10,11,12,13,14,15,16],
-    fy25: [0,1,2,3,4,5,6,7,8,9,10,11],
-    ytd26: [12,13,14,15,16],
-    last6: [11,12,13,14,15,16],
-    last3: [14,15,16],
-    q1_25: [0,1,2], q2_25: [3,4,5], q3_25: [6,7,8], q4_25: [9,10,11], q1_26: [12,13,14], q2_26: [15,16],
-  };
-  if (map[sel]) return map[sel];
+  const n = periods.length;
+  if (n === 0) return [];
+
+  // all / all{N} — every available period
+  if (/^all/.test(sel)) return periods.map((_, i) => i);
+
+  // last{N} — last N periods
+  const lastM = sel.match(/^last(\d+)$/);
+  if (lastM) {
+    const k = Math.min(parseInt(lastM[1]), n);
+    const start = n - k;
+    return Array.from({ length: k }, (_, j) => start + j);
+  }
+
+  // fy{YY} or ytd{YY} — all available periods for year 20{YY}
+  const yearKey = sel.match(/^(?:fy|ytd)(\d{2})$/);
+  if (yearKey) {
+    const year = 2000 + parseInt(yearKey[1]);
+    return periods.reduce<number[]>((acc, p, i) => {
+      if (p.endsWith(` ${year}`)) acc.push(i);
+      return acc;
+    }, []);
+  }
+
+  // q{Q}_{YY} — quarter Q (P{3Q-2}–P{3Q}) of year 20{YY}
+  const qKey = sel.match(/^q(\d)_(\d{2})$/);
+  if (qKey) {
+    const q = parseInt(qKey[1]);
+    const year = 2000 + parseInt(qKey[2]);
+    const pStart = (q - 1) * 3 + 1;
+    const pEnd = q * 3;
+    return periods.reduce<number[]>((acc, p, i) => {
+      const m = p.match(/^P(\d+)\s+(\d{4})$/);
+      if (m && +m[2] === year && +m[1] >= pStart && +m[1] <= pEnd) acc.push(i);
+      return acc;
+    }, []);
+  }
+
+  // Single period string like "P6 2026"
   const i = periods.indexOf(sel);
-  return i >= 0 ? [i] : [16];
+  return [i >= 0 ? i : n - 1];
 }
 
 export function getLabels(sel: string, periods: string[]): string[] {
