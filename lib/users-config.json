@@ -19,5 +19,12 @@
     "passwordHash": "$2b$10$ZvwPZvgn2jUK4Ao1y/i9kewVu/4I7FyDGqnzPVyJh8WuiL7VJBtVu",
     "role": "admin",
     "createdAt": "2026-07-13T11:23:54.257Z"
+  },
+  {
+    "id": "160c4046-6ecf-4c83-9cd8-ab683e2b0f93",
+    "email": "test@gmail.com",
+    "passwordHash": "$2b$10$XoAQDF8so5v1dtqR0JlRXuW8xsUZfk87mrjE/M2u6zEJxVoAd7s/a",
+    "role": "viewer",
+    "createdAt": "2026-07-17T10:58:33.218Z"
   }
 ]
