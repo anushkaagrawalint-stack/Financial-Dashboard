@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'role must be admin or viewer' }, { status: 400 });
   }
 
-  const users = loadUsers();
+  const users = await loadUsers();
   const idx = users.findIndex(u => u.id === id);
   if (idx === -1) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -33,7 +33,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   if (password) users[idx].passwordHash = await bcrypt.hash(password, 10);
   if (role)     users[idx].role = role as 'admin' | 'viewer';
-  saveUsers(users);
+  await saveUsers(users);
 
   return NextResponse.json({ ok: true });
 }
@@ -43,13 +43,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!caller) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  const users = loadUsers();
+  const users = await loadUsers();
   const user = users.find(u => u.id === id);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
   if (user.email === caller.email) {
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
   }
 
-  saveUsers(users.filter(u => u.id !== id));
+  await saveUsers(users.filter(u => u.id !== id));
   return NextResponse.json({ ok: true });
 }

@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   if (!verifyAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const users = loadUsers().map(({ id, email, role, createdAt }) => ({ id, email, role, createdAt }));
+  const users = (await loadUsers()).map(({ id, email, role, createdAt }) => ({ id, email, role, createdAt }));
   return NextResponse.json({ users });
 }
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'role must be admin or viewer' }, { status: 400 });
   }
 
-  const users = loadUsers();
+  const users = await loadUsers();
   const norm = String(email).toLowerCase().trim();
   if (users.find(u => u.email === norm)) {
     return NextResponse.json({ error: 'A user with that email already exists' }, { status: 409 });
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const passwordHash = await bcrypt.hash(password, 10);
   const newUser = { id: randomUUID(), email: norm, passwordHash, role: role as 'admin' | 'viewer', createdAt: new Date().toISOString() };
   users.push(newUser);
-  saveUsers(users);
+  await saveUsers(users);
 
   return NextResponse.json({ ok: true, user: { id: newUser.id, email: newUser.email, role: newUser.role } });
 }

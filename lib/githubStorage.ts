@@ -1,0 +1,87 @@
+// GitHub Contents API wrapper.
+// Every write here is a real commit pushed to GITHUB_BRANCH.
+// Vercel's GitHub integration detects the push and redeploys automatically,
+// so changes are reflected in the next deployment without any manual step.
+
+const OWNER  = process.env.GITHUB_OWNER;
+const REPO   = process.env.GITHUB_REPO;
+const BRANCH = process.env.GITHUB_BRANCH || 'main';
+const TOKEN  = process.env.GITHUB_TOKEN;
+
+const API = 'https://api.github.com';
+
+function encodeGitPath(p: string) {
+  return p.split('/').map(encodeURIComponent).join('/');
+}
+
+async function gh(path: string, options: RequestInit = {}): Promise<Response> {
+  const url = `${API}${path}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${TOKEN}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...((options.headers as Record<string, string>) || {}),
+  };
+  // Retry transient 5xx errors with exponential backoff.
+  const RETRYABLE = new Set([502, 503, 504]);
+  let delay = 500;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(url, { ...options, headers });
+    if (!RETRYABLE.has(res.status) || attempt === 2) return res;
+    await new Promise(r => setTimeout(r, delay));
+    delay *= 2;
+  }
+  throw new Error('GitHub request failed after retries');
+}
+
+type GHFile = { content: string; sha: string; download_url: string | null };
+
+async function getContents(repoPath: string): Promise<GHFile | null> {
+  const res = await gh(`/repos/${OWNER}/${REPO}/contents/${encodeGitPath(repoPath)}?ref=${BRANCH}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GitHub GET ${repoPath} failed: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function putFile(repoPath: string, buffer: Buffer, message: string): Promise<void> {
+  const existing = await getContents(repoPath);
+  const body: Record<string, unknown> = {
+    message,
+    content: buffer.toString('base64'),
+    branch: BRANCH,
+  };
+  if (existing) body.sha = existing.sha;
+
+  const res = await gh(`/repos/${OWNER}/${REPO}/contents/${encodeGitPath(repoPath)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`GitHub PUT ${repoPath} failed: ${res.status} ${await res.text()}`);
+}
+
+// ── Users config (lib/users-config.json) ────────────────────────────────────
+
+const USERS_CONFIG_PATH = 'lib/users-config.json';
+
+export function isGitHubConfigured(): boolean {
+  return !!(TOKEN && OWNER && REPO);
+}
+
+// Fetches the users array from GitHub. Returns null if the file doesn't exist or
+// GitHub is not configured.
+export async function getUsersConfig<T>(): Promise<T | null> {
+  if (!isGitHubConfigured()) return null;
+  const data = await getContents(USERS_CONFIG_PATH);
+  if (!data) return null;
+  try {
+    const text = Buffer.from(data.content, 'base64').toString('utf8');
+    return JSON.parse(text) as T;
+  } catch { return null; }
+}
+
+// Commits a new version of users-config.json to GitHub.
+export async function saveUsersConfig<T>(value: T): Promise<void> {
+  const buffer = Buffer.from(JSON.stringify(value, null, 2));
+  await putFile(USERS_CONFIG_PATH, buffer, 'Admin: update users');
+}
