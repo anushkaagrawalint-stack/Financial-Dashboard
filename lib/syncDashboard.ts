@@ -163,31 +163,119 @@ interface DashboardData {
 
 // ── Extract one xlsx buffer ───────────────────────────────────────────────────
 
+// Recursive formula evaluator for stub cells (t:'z') with stale cached values.
+// Some R365 exports store formulas with v:0 instead of the computed result.
+// This evaluator resolves cell references recursively so subtotals are correct.
+function makeSheetEvaluator(ws: XLSX.WorkSheet[]) {
+  const memo = new Map<string, number>();
+  const evaluating = new Set<string>();
+
+  function parseCellRef(ref: string): { col: number; row: number } | null {
+    const m = ref.match(/^([A-Z]+)(\d+)$/);
+    if (!m) return null;
+    let col = 0;
+    for (const ch of m[1]) col = col * 26 + (ch.charCodeAt(0) - 64);
+    return { col: col - 1, row: parseInt(m[2]) - 1 };
+  }
+
+  function getCellValue(col: number, row: number): number {
+    const key = `${col},${row}`;
+    if (memo.has(key)) return memo.get(key)!;
+    if (evaluating.has(key)) return 0;
+
+    const wsRow = (ws as unknown as XLSX.CellObject[][])[row];
+    const cell = wsRow?.[col] as XLSX.CellObject | undefined;
+    if (!cell) { memo.set(key, 0); return 0; }
+
+    let val: number;
+    if (cell.t === 'n') {
+      val = (cell.v as number) ?? 0;
+    } else if (cell.t === 'z' && cell.f) {
+      evaluating.add(key);
+      val = evalExpr(cell.f);
+      evaluating.delete(key);
+    } else {
+      val = 0;
+    }
+    memo.set(key, val);
+    return val;
+  }
+
+  function evalExpr(formula: string): number {
+    let expr = formula;
+    const iferr = expr.match(/^IFERROR\((.+),\s*(?:"[^"]*"|[^,]+)\)$/i);
+    if (iferr) expr = iferr[1];
+
+    const tokens = expr.split(/([+\-])/);
+    let result = 0, sign = 1;
+    for (const tok of tokens) {
+      const t = tok.trim();
+      if (t === '+') { sign = 1; continue; }
+      if (t === '-') { sign = -1; continue; }
+      if (!t) continue;
+      const ref = parseCellRef(t);
+      if (ref) result += sign * getCellValue(ref.col, ref.row);
+    }
+    return result;
+  }
+
+  return { getCellValue };
+}
+
 // Returns entity → jsonKey → [actual, budget, priorYear]
 export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [number, number, number]>> {
-  const wb = XLSX.read(buf, { type: 'buffer', cellDates: false });
+  const wb = XLSX.read(buf, { type: 'buffer', cellDates: false, cellFormula: true, sheetStubs: true, dense: true });
   const result: Record<string, Record<string, [number, number, number]>> = {};
 
   for (const [sheetName, entity] of Object.entries(SHEET_TO_ENTITY)) {
     if (!wb.SheetNames.includes(sheetName)) continue;
-    const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(wb.Sheets[sheetName], { header: 1, defval: null });
+
+    const ws = wb.Sheets[sheetName] as unknown as XLSX.WorkSheet[];
+    const ev = makeSheetEvaluator(ws);
+    const denseRows = ws as unknown as (XLSX.CellObject | undefined)[][];
     const entityData: Record<string, [number, number, number]> = {};
 
-    for (const row of rows) {
-      const excelLabel = row[COL_LABEL];
-      if (!excelLabel) continue;
-      const actual = row[COL_ACTUAL];
-      if (actual === null || actual === undefined) continue;
+    for (let r = 0; r < denseRows.length; r++) {
+      const row = denseRows[r];
+      if (!row) continue;
 
-      const labelStr = String(excelLabel);
+      const labelCell = row[COL_LABEL] as XLSX.CellObject | undefined;
+      if (!labelCell || labelCell.t !== 's') continue;
+      const labelStr = String(labelCell.v);
+
       const jsonKey = EXCEL_TO_JSON[labelStr] ?? (JSON_KEYS_SET.has(labelStr) ? labelStr : null);
       if (!jsonKey || jsonKey in entityData) continue;
 
-      entityData[jsonKey] = [
-        Number(actual),
-        row[COL_BUDGET]     !== null && row[COL_BUDGET]     !== undefined ? Number(row[COL_BUDGET])     : 0,
-        row[COL_PRIOR_YEAR] !== null && row[COL_PRIOR_YEAR] !== undefined ? Number(row[COL_PRIOR_YEAR]) : 0,
-      ];
+      // Get actual value — evaluate formula cells if cached value is stale (0 with formula)
+      const actualCell = row[COL_ACTUAL] as XLSX.CellObject | undefined;
+      if (!actualCell) continue;
+
+      let actual: number;
+      if (actualCell.t === 'n') {
+        actual = (actualCell.v as number) ?? 0;
+      } else if (actualCell.t === 'z' && actualCell.f) {
+        actual = ev.getCellValue(COL_ACTUAL, r);
+      } else {
+        continue; // string, bool, error — skip
+      }
+
+      const budget = (() => {
+        const c = row[COL_BUDGET] as XLSX.CellObject | undefined;
+        if (!c) return 0;
+        if (c.t === 'n') return (c.v as number) ?? 0;
+        if (c.t === 'z' && c.f) return ev.getCellValue(COL_BUDGET, r);
+        return 0;
+      })();
+
+      const priorYear = (() => {
+        const c = row[COL_PRIOR_YEAR] as XLSX.CellObject | undefined;
+        if (!c) return 0;
+        if (c.t === 'n') return (c.v as number) ?? 0;
+        if (c.t === 'z' && c.f) return ev.getCellValue(COL_PRIOR_YEAR, r);
+        return 0;
+      })();
+
+      entityData[jsonKey] = [actual, budget, priorYear];
     }
     result[entity] = entityData;
   }
