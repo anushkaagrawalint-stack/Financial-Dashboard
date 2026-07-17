@@ -26,5 +26,12 @@
     "passwordHash": "$2b$10$XoAQDF8so5v1dtqR0JlRXuW8xsUZfk87mrjE/M2u6zEJxVoAd7s/a",
     "role": "viewer",
     "createdAt": "2026-07-17T10:58:33.218Z"
+  },
+  {
+    "id": "d9a609fd-274f-4a4b-873d-ea093c8280a2",
+    "email": "dlafontant@rasa.co",
+    "passwordHash": "$2b$10$Fh06IOjopAYHzO0Gd.rZw.S3w8swYlaQR2BrvmjXcm1uafOo2lIG2",
+    "role": "viewer",
+    "createdAt": "2026-07-17T10:58:37.723Z"
   }
 ]
