@@ -38,6 +38,7 @@ export default function Dashboard() {
 
   function handleLogout() {
     localStorage.removeItem('wbr_token');
+    localStorage.removeItem('wbr_role');
     router.replace('/login');
   }
 

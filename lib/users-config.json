@@ -1,0 +1,23 @@
+[
+  {
+    "id": "1",
+    "email": "trey@rasa.co",
+    "passwordHash": "$2b$10$p8O07bRBti43SvyK0APHs.Yt.vpBIWkkMCKtJOwNbvaQv59ASJatq",
+    "role": "viewer",
+    "createdAt": "2026-07-13T11:23:54.256Z"
+  },
+  {
+    "id": "2",
+    "email": "analytics@rasa.co",
+    "passwordHash": "$2b$10$ZzDazG61.puxkFCwo.rGF.7zKdPvJ9295m9pP1Lk9bY2BsWE4pgDG",
+    "role": "viewer",
+    "createdAt": "2026-07-13T11:23:54.257Z"
+  },
+  {
+    "id": "3",
+    "email": "admin@kutlerri.ai",
+    "passwordHash": "$2b$10$ZvwPZvgn2jUK4Ao1y/i9kewVu/4I7FyDGqnzPVyJh8WuiL7VJBtVu",
+    "role": "admin",
+    "createdAt": "2026-07-13T11:23:54.257Z"
+  }
+]

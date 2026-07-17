@@ -1,6 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import type { DashboardData } from '@/lib/types';
 import PeriodSelect from './PeriodSelect';
 import LocationSelect from './LocationSelect';
@@ -33,6 +35,13 @@ function getPeriodBadge(curPeriod: string): string {
 }
 
 export default function Header({ curEntity, curPeriod, activeTab, onEntityChange, onPeriodChange, onLogout }: HeaderProps) {
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(localStorage.getItem('wbr_role') === 'admin');
+  }, []);
+
   return (
     <div className="hdr">
       <div className="hdr-brand">
@@ -65,6 +74,9 @@ export default function Header({ curEntity, curPeriod, activeTab, onEntityChange
           <Image src="/kutlerri-logo.png" alt="Kutlerri Logo" height={28} width={120} style={{ height: 28, width: 'auto' }} priority />
         </div>
 
+        {isAdmin && (
+          <button className="logout-btn" style={{ marginRight: 6 }} onClick={() => router.push('/admin')}>Admin</button>
+        )}
         <button className="logout-btn" onClick={onLogout}>Log out</button>
       </div>
     </div>

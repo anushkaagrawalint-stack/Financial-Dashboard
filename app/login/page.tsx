@@ -26,8 +26,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { token } = await login(email.trim(), password);
+      const { token, user } = await login(email.trim(), password);
       localStorage.setItem('wbr_token', token);
+      localStorage.setItem('wbr_role', user.role ?? 'viewer');
       router.replace('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');

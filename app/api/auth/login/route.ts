@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getUsers } from '@/lib/auth';
+import { loadUsers } from '@/lib/users';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
+  const role = loadUsers().find(u => u.email === normalized)?.role ?? 'viewer';
   const token = jwt.sign({ email: normalized }, process.env.JWT_SECRET!, { expiresIn: '8h' });
-  return NextResponse.json({ token, user: { email: normalized } });
+  return NextResponse.json({ token, user: { email: normalized, role } });
 }
