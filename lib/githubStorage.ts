@@ -62,7 +62,8 @@ async function putFile(repoPath: string, buffer: Buffer, message: string): Promi
 
 // ── Users config (lib/users-config.json) ────────────────────────────────────
 
-const USERS_CONFIG_PATH = 'lib/users-config.json';
+const USERS_CONFIG_PATH   = 'lib/users-config.json';
+const PERIODS_CONFIG_PATH = 'lib/periods-config.json';
 
 export function isGitHubConfigured(): boolean {
   return !!(TOKEN && OWNER && REPO);
@@ -84,4 +85,40 @@ export async function getUsersConfig<T>(): Promise<T | null> {
 export async function saveUsersConfig<T>(value: T): Promise<void> {
   const buffer = Buffer.from(JSON.stringify(value, null, 2));
   await putFile(USERS_CONFIG_PATH, buffer, 'Admin: update users');
+}
+
+// ── Periods config (lib/periods-config.json) ─────────────────────────────────
+
+export async function getPeriodsConfig<T>(): Promise<T | null> {
+  if (!isGitHubConfigured()) return null;
+  const data = await getContents(PERIODS_CONFIG_PATH);
+  if (!data) return null;
+  try {
+    const text = Buffer.from(data.content, 'base64').toString('utf8');
+    return JSON.parse(text) as T;
+  } catch { return null; }
+}
+
+export async function savePeriodsConfig<T>(value: T): Promise<void> {
+  const buffer = Buffer.from(JSON.stringify(value, null, 2));
+  await putFile(PERIODS_CONFIG_PATH, buffer, 'Admin: update periods');
+}
+
+// ── Excel data files (Data/*.xlsx) ───────────────────────────────────────────
+
+export async function saveDataFile(filename: string, buffer: Buffer): Promise<void> {
+  await putFile(`Data/${filename}`, buffer, `Admin: upload ${filename}`);
+}
+
+export async function deleteDataFile(filename: string): Promise<void> {
+  const existing = await getContents(`Data/${filename}`);
+  if (!existing) return; // already gone
+  const res = await gh(`/repos/${OWNER}/${REPO}/contents/${encodeGitPath(`Data/${filename}`)}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `Admin: delete ${filename}`, sha: existing.sha, branch: BRANCH }),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`GitHub DELETE Data/${filename} failed: ${res.status} ${await res.text()}`);
+  }
 }

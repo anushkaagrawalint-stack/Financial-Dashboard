@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const periods = loadPeriods().map(p => {
+  const periods = (await loadPeriods()).map(p => {
     const fpath = path.join(DATA_DIR, p.filename);
     const exists = fs.existsSync(fpath);
     let size = 0, modified: string | null = null;

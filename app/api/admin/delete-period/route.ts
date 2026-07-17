@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
 import { loadPeriods, savePeriods, DATA_DIR } from '@/lib/periods';
+import { isGitHubConfigured, deleteDataFile } from '@/lib/githubStorage';
 import fs from 'fs';
 import path from 'path';
 
@@ -12,14 +13,18 @@ export async function DELETE(request: Request) {
   }
 
   const { idx } = await request.json() as { idx: number };
-  const periods  = loadPeriods();
+  const periods  = await loadPeriods();
   const period   = periods.find(p => p.idx === idx);
   if (!period) return NextResponse.json({ error: 'Period not found' }, { status: 404 });
 
-  const fpath = path.join(DATA_DIR, period.filename);
-  if (fs.existsSync(fpath)) fs.unlinkSync(fpath);
+  if (isGitHubConfigured()) {
+    await deleteDataFile(period.filename);
+  } else {
+    const fpath = path.join(DATA_DIR, period.filename);
+    if (fs.existsSync(fpath)) fs.unlinkSync(fpath);
+  }
 
-  savePeriods(periods.filter(p => p.idx !== idx));
+  await savePeriods(periods.filter(p => p.idx !== idx));
 
   return NextResponse.json({ ok: true, removed: period.label });
 }

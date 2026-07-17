@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
 import { loadPeriods, savePeriods, DATA_DIR } from '@/lib/periods';
+import { isGitHubConfigured, saveDataFile } from '@/lib/githubStorage';
 import fs from 'fs';
 import path from 'path';
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   const label    = `P${periodNum} ${year}`;
   const filename = `P${periodNum} ${year}.xlsx`;
-  const periods  = loadPeriods();
+  const periods  = await loadPeriods();
 
   if (periods.find(p => p.label === label)) {
     return NextResponse.json({ error: `${label} already exists — use Replace instead` }, { status: 409 });
@@ -34,11 +35,16 @@ export async function POST(request: Request) {
   const newEntry = { idx: newIdx, label, filename };
 
   const buf = Buffer.from(await file.arrayBuffer());
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(path.join(DATA_DIR, filename), buf);
+
+  if (isGitHubConfigured()) {
+    await saveDataFile(filename, buf);
+  } else {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(path.join(DATA_DIR, filename), buf);
+  }
 
   periods.push(newEntry);
-  savePeriods(periods);
+  await savePeriods(periods);
 
   return NextResponse.json({ ok: true, period: newEntry });
 }
