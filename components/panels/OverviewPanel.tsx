@@ -100,12 +100,12 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
           ]} />
         )}
         <KpiCard label="COGS %" valStr={fmtPct(cogsActualPct)} subs={[
-          { txt: `vs Budget: ${fmtVarPct(cogsActualPct != null ? cogsBudgetPct - cogsActualPct : null)}`, cls: varCls(cogsActualPct != null ? cogsBudgetPct - cogsActualPct : null, false) },
-          { txt: `vs LY: ${fmtVarPct(cogsActualPct != null ? cogsLYPct - cogsActualPct : null)}`, cls: varCls(cogsActualPct != null ? cogsLYPct - cogsActualPct : null, false) },
+          { txt: `vs Budget: ${fmtVarPct(cogsActualPct != null ? cogsActualPct - cogsBudgetPct : null)}`, cls: varCls(cogsActualPct != null ? cogsActualPct - cogsBudgetPct : null, true) },
+          { txt: `vs LY: ${fmtVarPct(cogsActualPct != null ? cogsActualPct - cogsLYPct : null)}`, cls: varCls(cogsActualPct != null ? cogsActualPct - cogsLYPct : null, true) },
         ]} />
         <KpiCard label="Labor %" valStr={fmtPct(laborActualPct)} subs={[
-          { txt: `vs Budget: ${fmtVarPct(laborActualPct != null ? laborBudgetPct - laborActualPct : null)}`, cls: varCls(laborActualPct != null ? laborBudgetPct - laborActualPct : null, false) },
-          { txt: `vs LY: ${fmtVarPct(laborActualPct != null ? laborLYPct - laborActualPct : null)}`, cls: varCls(laborActualPct != null ? laborLYPct - laborActualPct : null, false) },
+          { txt: `vs Budget: ${fmtVarPct(laborActualPct != null ? laborActualPct - laborBudgetPct : null)}`, cls: varCls(laborActualPct != null ? laborActualPct - laborBudgetPct : null, true) },
+          { txt: `vs LY: ${fmtVarPct(laborActualPct != null ? laborActualPct - laborLYPct : null)}`, cls: varCls(laborActualPct != null ? laborActualPct - laborLYPct : null, true) },
         ]} />
       </div>
 

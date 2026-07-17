@@ -312,8 +312,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
         const actualPct = a.v ? (a.v / (totalSalesAgg.v || 1)) * 100 : null;
         const lyPct = a.py ? (a.py / (totalSalesAgg.py || 1)) * 100 : null;
         const budgetPct = a.b ? (a.b / (totalSalesAgg.b || 1)) * 100 : null;
-        const varLY = actualPct != null && lyPct != null ? lyPct - actualPct : null;
-        const varBud = actualPct != null && budgetPct != null ? budgetPct - actualPct : null;
+        const varLY = actualPct != null && lyPct != null ? actualPct - lyPct : null;
+        const varBud = actualPct != null && budgetPct != null ? actualPct - budgetPct : null;
         row = (
           <tr key={it.key} onClick={hasChildren ? () => toggleRow(it.key) : undefined}
             style={{cursor: hasChildren ? 'pointer' : undefined}}>
@@ -321,9 +321,9 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
             <td>{fmt$(a.v)}</td>
             <td>{fmtPct(actualPct)}</td>
             <td>{fmtPct(lyPct)}</td>
-            <td className={varCls(varLY, false)}>{fmtVarPct(varLY)}</td>
+            <td className={varCls(varLY, true)}>{fmtVarPct(varLY)}</td>
             <td>{budgetPct != null ? fmtPct(budgetPct) : '—'}</td>
-            <td className={budgetPct != null ? varCls(varBud, false) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
+            <td className={budgetPct != null ? varCls(varBud, true) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
           </tr>
         );
       } else {
@@ -357,8 +357,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
       return (
         <>
           <KpiCard label={`Total ${cfg.title}`} valStr={fmtPct(taPct)} accent subs={[
-            { txt: `vs Budget: ${fmtVarPct(taBudPct != null && taPct != null ? taBudPct - taPct : null)}`, cls: varCls(taBudPct != null && taPct != null ? taBudPct - taPct : null, false) },
-            { txt: `vs LY: ${fmtVarPct(taLYPct != null && taPct != null ? taLYPct - taPct : null)}`, cls: varCls(taLYPct != null && taPct != null ? taLYPct - taPct : null, false) },
+            { txt: `vs Budget: ${fmtVarPct(taBudPct != null && taPct != null ? taPct - taBudPct : null)}`, cls: varCls(taBudPct != null && taPct != null ? taPct - taBudPct : null, true) },
+            { txt: `vs LY: ${fmtVarPct(taLYPct != null && taPct != null ? taPct - taLYPct : null)}`, cls: varCls(taLYPct != null && taPct != null ? taPct - taLYPct : null, true) },
           ]} />
           {cfg.items.slice(0, 4).map(it => {
             const a = agg(D, UE, it.key, idx);
@@ -367,8 +367,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
             const pyPct = a.py ? (a.py / (totalSalesAgg.py || 1)) * 100 : null;
             return (
               <KpiCard key={it.key} label={it.lbl} valStr={fmtPct(aPct)} subs={[
-                { txt: `vs Budget: ${fmtVarPct(bPct != null && aPct != null ? bPct - aPct : null)}`, cls: varCls(bPct != null && aPct != null ? bPct - aPct : null, false) },
-                { txt: `vs LY: ${fmtVarPct(pyPct != null && aPct != null ? pyPct - aPct : null)}`, cls: varCls(pyPct != null && aPct != null ? pyPct - aPct : null, false) },
+                { txt: `vs Budget: ${fmtVarPct(bPct != null && aPct != null ? aPct - bPct : null)}`, cls: varCls(bPct != null && aPct != null ? aPct - bPct : null, true) },
+                { txt: `vs LY: ${fmtVarPct(pyPct != null && aPct != null ? aPct - pyPct : null)}`, cls: varCls(pyPct != null && aPct != null ? aPct - pyPct : null, true) },
               ]} />
             );
           })}
@@ -400,8 +400,8 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
       const actualPct = ta.v ? (ta.v / (totalSalesAgg.v || 1)) * 100 : null;
       const lyPct = ta.py ? (ta.py / (totalSalesAgg.py || 1)) * 100 : null;
       const budgetPct = ta.b ? (ta.b / (totalSalesAgg.b || 1)) * 100 : null;
-      const varLY = actualPct != null && lyPct != null ? lyPct - actualPct : null;
-      const varBud = actualPct != null && budgetPct != null ? budgetPct - actualPct : null;
+      const varLY = actualPct != null && lyPct != null ? actualPct - lyPct : null;
+      const varBud = actualPct != null && budgetPct != null ? actualPct - budgetPct : null;
       return (
         <table className="dtable">
           <thead>
@@ -418,9 +418,9 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
               <td>{fmt$(ta.v)}</td>
               <td>{fmtPct(actualPct)}</td>
               <td>{fmtPct(lyPct)}</td>
-              <td className={varCls(varLY, false)}>{fmtVarPct(varLY)}</td>
+              <td className={varCls(varLY, true)}>{fmtVarPct(varLY)}</td>
               <td>{budgetPct != null ? fmtPct(budgetPct) : '—'}</td>
-              <td className={budgetPct != null ? varCls(varBud, false) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
+              <td className={budgetPct != null ? varCls(varBud, true) : ''}>{budgetPct != null ? fmtVarPct(varBud) : '—'}</td>
             </tr>
           </tbody>
         </table>
