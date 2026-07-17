@@ -34,7 +34,14 @@ export default function Dashboard() {
       headers: { Authorization: `Bearer ${tok}` },
     })
       .then(res => {
-        if (res.status === 401) { router.replace('/login'); return null; }
+        if (res.status === 401) {
+          localStorage.removeItem('wbr_token');
+          localStorage.removeItem('wbr_role');
+          document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax';
+          setError('Session expired — redirecting to sign in…');
+          setTimeout(() => router.replace('/login'), 2000);
+          return null;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
@@ -50,6 +57,7 @@ export default function Dashboard() {
   function handleLogout() {
     localStorage.removeItem('wbr_token');
     localStorage.removeItem('wbr_role');
+    document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax';
     router.replace('/login');
   }
 

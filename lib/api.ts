@@ -19,6 +19,7 @@ export function handle401(res: Response): void {
   if (res.status === 401 && typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ROLE_KEY);
+    document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax';
     window.location.href = '/login';
   }
 }

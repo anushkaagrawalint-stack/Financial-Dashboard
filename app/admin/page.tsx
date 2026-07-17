@@ -85,6 +85,7 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/status', { headers: { Authorization: `Bearer ${t}` } });
     if (res.status === 401 || res.status === 403) {
       localStorage.removeItem('wbr_token');
+      document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax';
       router.replace('/login');
       return;
     }
@@ -98,6 +99,7 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${t}` } });
       if (res.status === 401 || res.status === 403) {
         localStorage.removeItem('wbr_token');
+        document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax';
         router.replace('/login');
         return;
       }
@@ -289,7 +291,7 @@ export default function AdminPage() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => router.push('/dashboard')} style={ghost()}>← Dashboard</button>
-          <button onClick={() => { localStorage.removeItem('wbr_token'); router.replace('/login'); }} style={ghost()}>Sign Out</button>
+          <button onClick={() => { localStorage.removeItem('wbr_token'); document.cookie = 'wbr_token=; path=/; max-age=0; SameSite=Lax'; router.replace('/login'); }} style={ghost()}>Sign Out</button>
         </div>
       </div>
 
