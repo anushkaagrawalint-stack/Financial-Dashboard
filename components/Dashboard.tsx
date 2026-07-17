@@ -8,10 +8,7 @@ import RevenuePanel from './panels/RevenuePanel';
 import ExpensesPanel from './panels/ExpensesPanel';
 import SummaryPanel from './panels/SummaryPanel';
 import FullPnlPanel from './panels/FullPnlPanel';
-import D from '@/lib/dashboard-data.json';
 import type { DashboardData } from '@/lib/types';
-
-const data = D as unknown as DashboardData;
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -23,17 +20,31 @@ const TABS = [
 
 export default function Dashboard() {
   const router = useRouter();
-  const [authed, setAuthed] = useState(false);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [curEntity, setCurEntity] = useState('Consolidated');
-  const [curPeriod, setCurPeriod] = useState('P5 2026');
+  const [curPeriod, setCurPeriod] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!localStorage.getItem('wbr_token')) {
-      router.replace('/login');
-    } else {
-      setAuthed(true);
-    }
+    const tok = localStorage.getItem('wbr_token');
+    if (!tok) { router.replace('/login'); return; }
+
+    fetch('/api/dashboard-data', {
+      headers: { Authorization: `Bearer ${tok}` },
+    })
+      .then(res => {
+        if (res.status === 401) { router.replace('/login'); return null; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((d: DashboardData | null) => {
+        if (!d) return;
+        setData(d);
+        // Default to the most recent period
+        if (d.periods?.length) setCurPeriod(d.periods[d.periods.length - 1]);
+      })
+      .catch(e => setError(e.message));
   }, [router]);
 
   function handleLogout() {
@@ -42,7 +53,15 @@ export default function Dashboard() {
     router.replace('/login');
   }
 
-  if (!authed) {
+  if (error) {
+    return (
+      <div className="loading-screen">
+        <span>Failed to load data: {error}</span>
+      </div>
+    );
+  }
+
+  if (!data) {
     return (
       <div className="loading-screen">
         <div className="spinner" />
