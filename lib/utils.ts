@@ -48,6 +48,24 @@ export function getLabels(sel: string, periods: string[]): string[] {
   return getIdx(sel, periods).map(i => periods[i]);
 }
 
+// True when `indices` are Period N..M of a single year, contiguous and in order
+// (e.g. a quarter, a YTD span, or any other in-year multi-period range) —
+// as opposed to a single period or a range crossing a year boundary.
+function contiguousYearRange(periods: string[], indices: number[]): { startIdx: number; lastIdx: number; startNum: number } | null {
+  if (indices.length < 2) return null;
+  const sorted = [...indices].sort((a, b) => a - b);
+  let prevNum: number | null = null;
+  for (const i of sorted) {
+    const m = periods[i]?.match(/^P(\d+)\s+\d{4}$/);
+    if (!m) return null;
+    const n = +m[1];
+    if (prevNum !== null && n !== prevNum + 1) return null;
+    prevNum = n;
+  }
+  const startMatch = periods[sorted[0]].match(/^P(\d+)\s+\d{4}$/)!;
+  return { startIdx: sorted[0], lastIdx: sorted[sorted.length - 1], startNum: +startMatch[1] };
+}
+
 export function agg(
   D: DashboardData,
   entity: string,
@@ -56,6 +74,23 @@ export function agg(
 ): { v: number; b: number; py: number } {
   const d = D.t12[entity]?.[label] as MetricData | undefined;
   if (!d) return { v: 0, b: 0, py: 0 };
+
+  // In-year multi-period spans (YTD, quarters, custom ranges): derive from the
+  // cumulative "YTD" figures read directly from each period's own P&L sheet
+  // (last-period cumulative minus the cumulative just before the range starts),
+  // rather than summing monthly values in JS — the sheet's own running totals
+  // can reflect later restatements that individual months' Actual columns don't.
+  if (d.ytdV) {
+    const range = contiguousYearRange(D.periods, indices);
+    if (range) {
+      const before = range.startNum > 1 ? range.startIdx - 1 : -1;
+      const v = (d.ytdV[range.lastIdx] || 0) - (before >= 0 ? (d.ytdV[before] || 0) : 0);
+      const b = (d.ytdB?.[range.lastIdx] || 0) - (before >= 0 ? (d.ytdB?.[before] || 0) : 0);
+      const py = (d.ytdPy?.[range.lastIdx] || 0) - (before >= 0 ? (d.ytdPy?.[before] || 0) : 0);
+      return { v, b, py };
+    }
+  }
+
   const v = indices.reduce((s, i) => s + (d.v[i] || 0), 0);
   const b = indices.reduce((s, i) => s + (d.b[i] || 0), 0);
   const py = indices.reduce((s, i) => s + (d.py[i] || 0), 0);

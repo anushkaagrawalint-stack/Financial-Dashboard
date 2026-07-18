@@ -21,6 +21,13 @@ const COL_ACTUAL     = 1;
 const COL_BUDGET     = 4;
 const COL_PRIOR_YEAR = 10;
 
+// Cumulative "YTD" block in the same sheet (columns Q/T/Z) — Excel's own
+// running total through this period, used directly instead of summing
+// monthly Actual columns across periods in JS.
+const COL_YTD_ACTUAL     = 16;
+const COL_YTD_BUDGET     = 19;
+const COL_YTD_PRIOR_YEAR = 25;
+
 const EXCEL_TO_JSON: Record<string, string> = {
   'ShareBite Commissions': 'Sharebite Commissions',
 };
@@ -152,7 +159,7 @@ const ENTITIES = Object.values(SHEET_TO_ENTITY);
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type T12Entry = { v: number[]; b: number[]; py: number[] };
+type T12Entry = { v: number[]; b: number[]; py: number[]; ytdV: number[]; ytdB: number[]; ytdPy: number[] };
 type T12 = Record<string, Record<string, T12Entry>>;
 
 interface DashboardData {
@@ -222,10 +229,18 @@ function makeSheetEvaluator(ws: XLSX.WorkSheet[]) {
   return { getCellValue };
 }
 
-// Returns entity → jsonKey → [actual, budget, priorYear]
-export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [number, number, number]>> {
+function readNumericCell(row: (XLSX.CellObject | undefined)[], col: number, r: number, ev: ReturnType<typeof makeSheetEvaluator>): number {
+  const c = row[col] as XLSX.CellObject | undefined;
+  if (!c) return 0;
+  if (c.t === 'n') return (c.v as number) ?? 0;
+  if (c.t === 'z' && c.f) return ev.getCellValue(col, r);
+  return 0;
+}
+
+// Returns entity → jsonKey → [actual, budget, priorYear, ytdActual, ytdBudget, ytdPriorYear]
+export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [number, number, number, number, number, number]>> {
   const wb = XLSX.read(buf, { type: 'buffer', cellDates: false, cellFormula: true, sheetStubs: true, dense: true });
-  const result: Record<string, Record<string, [number, number, number]>> = {};
+  const result: Record<string, Record<string, [number, number, number, number, number, number]>> = {};
 
   for (const [sheetName, entity] of Object.entries(SHEET_TO_ENTITY)) {
     if (!wb.SheetNames.includes(sheetName)) continue;
@@ -233,7 +248,7 @@ export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [n
     const ws = wb.Sheets[sheetName] as unknown as XLSX.WorkSheet[];
     const ev = makeSheetEvaluator(ws);
     const denseRows = ws as unknown as (XLSX.CellObject | undefined)[][];
-    const entityData: Record<string, [number, number, number]> = {};
+    const entityData: Record<string, [number, number, number, number, number, number]> = {};
 
     for (let r = 0; r < denseRows.length; r++) {
       const row = denseRows[r];
@@ -259,23 +274,13 @@ export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [n
         continue; // string, bool, error — skip
       }
 
-      const budget = (() => {
-        const c = row[COL_BUDGET] as XLSX.CellObject | undefined;
-        if (!c) return 0;
-        if (c.t === 'n') return (c.v as number) ?? 0;
-        if (c.t === 'z' && c.f) return ev.getCellValue(COL_BUDGET, r);
-        return 0;
-      })();
+      const budget = readNumericCell(row, COL_BUDGET, r, ev);
+      const priorYear = readNumericCell(row, COL_PRIOR_YEAR, r, ev);
+      const ytdActual = readNumericCell(row, COL_YTD_ACTUAL, r, ev);
+      const ytdBudget = readNumericCell(row, COL_YTD_BUDGET, r, ev);
+      const ytdPriorYear = readNumericCell(row, COL_YTD_PRIOR_YEAR, r, ev);
 
-      const priorYear = (() => {
-        const c = row[COL_PRIOR_YEAR] as XLSX.CellObject | undefined;
-        if (!c) return 0;
-        if (c.t === 'n') return (c.v as number) ?? 0;
-        if (c.t === 'z' && c.f) return ev.getCellValue(COL_PRIOR_YEAR, r);
-        return 0;
-      })();
-
-      entityData[jsonKey] = [actual, budget, priorYear];
+      entityData[jsonKey] = [actual, budget, priorYear, ytdActual, ytdBudget, ytdPriorYear];
     }
     result[entity] = entityData;
   }
@@ -293,6 +298,9 @@ function blankT12(nPeriods: number): T12 {
         v: new Array(nPeriods).fill(0),
         b: new Array(nPeriods).fill(0),
         py: new Array(nPeriods).fill(0),
+        ytdV: new Array(nPeriods).fill(0),
+        ytdB: new Array(nPeriods).fill(0),
+        ytdPy: new Array(nPeriods).fill(0),
       };
     }
   }
@@ -336,15 +344,18 @@ async function persistDashboardData(data: DashboardData): Promise<void> {
 function applyExtracted(
   t12: T12,
   periodIdx: number,
-  extracted: Record<string, Record<string, [number, number, number]>>,
+  extracted: Record<string, Record<string, [number, number, number, number, number, number]>>,
 ): void {
   for (const [entity, keyMap] of Object.entries(extracted)) {
     if (!t12[entity]) continue;
-    for (const [jsonKey, [v, b, py]] of Object.entries(keyMap)) {
+    for (const [jsonKey, [v, b, py, ytdV, ytdB, ytdPy]] of Object.entries(keyMap)) {
       if (!t12[entity][jsonKey]) continue;
       t12[entity][jsonKey].v[periodIdx] = v;
       t12[entity][jsonKey].b[periodIdx] = b;
       t12[entity][jsonKey].py[periodIdx] = py;
+      t12[entity][jsonKey].ytdV[periodIdx] = ytdV;
+      t12[entity][jsonKey].ytdB[periodIdx] = ytdB;
+      t12[entity][jsonKey].ytdPy[periodIdx] = ytdPy;
     }
   }
 }
@@ -361,7 +372,13 @@ export async function syncOnUpload(period: PeriodEntry, buf: Buffer, allPeriods:
   for (const entity of Object.keys(data.t12)) {
     for (const key of Object.keys(data.t12[entity])) {
       const entry = data.t12[entity][key];
-      while (entry.v.length < needed) { entry.v.push(0); entry.b.push(0); entry.py.push(0); }
+      if (!entry.ytdV) entry.ytdV = new Array(entry.v.length).fill(0);
+      if (!entry.ytdB) entry.ytdB = new Array(entry.v.length).fill(0);
+      if (!entry.ytdPy) entry.ytdPy = new Array(entry.v.length).fill(0);
+      while (entry.v.length < needed) {
+        entry.v.push(0); entry.b.push(0); entry.py.push(0);
+        entry.ytdV.push(0); entry.ytdB.push(0); entry.ytdPy.push(0);
+      }
     }
   }
 
@@ -386,12 +403,18 @@ export async function syncOnAddPeriod(period: PeriodEntry, buf: Buffer, allPerio
   for (const entity of ENTITIES) {
     if (!data.t12[entity]) {
       data.t12[entity] = {};
-      for (const key of ALL_KEYS) data.t12[entity][key] = { v: [], b: [], py: [] };
+      for (const key of ALL_KEYS) data.t12[entity][key] = { v: [], b: [], py: [], ytdV: [], ytdB: [], ytdPy: [] };
     }
     for (const key of ALL_KEYS) {
-      if (!data.t12[entity][key]) data.t12[entity][key] = { v: [], b: [], py: [] };
+      if (!data.t12[entity][key]) data.t12[entity][key] = { v: [], b: [], py: [], ytdV: [], ytdB: [], ytdPy: [] };
       const entry = data.t12[entity][key];
-      while (entry.v.length < needed) { entry.v.push(0); entry.b.push(0); entry.py.push(0); }
+      if (!entry.ytdV) entry.ytdV = new Array(entry.v.length).fill(0);
+      if (!entry.ytdB) entry.ytdB = new Array(entry.v.length).fill(0);
+      if (!entry.ytdPy) entry.ytdPy = new Array(entry.v.length).fill(0);
+      while (entry.v.length < needed) {
+        entry.v.push(0); entry.b.push(0); entry.py.push(0);
+        entry.ytdV.push(0); entry.ytdB.push(0); entry.ytdPy.push(0);
+      }
     }
   }
 
