@@ -50,6 +50,38 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
 
   const ppDiff = (a: number | null, b: number | null) => (a != null && b != null ? a - b : null);
 
+  // "All Locations" row: dollar figures summed, percentages re-derived from the summed
+  // dollars (not averaged across locations) so COGS/Labor/OpEx/EBITDA % stay accurate.
+  const sumField = (key: 'sales' | 'ebitda' | 'cogs' | 'labor' | 'opex', field: 'v' | 'b' | 'py') => {
+    const metricKey: Record<string, string> = {
+      sales: 'Total Sales', ebitda: 'EBITDA', cogs: 'Total Cost of Goods Sold',
+      labor: 'Total Payroll Expenses', opex: 'Total Operating Expense',
+    };
+    return LOCATIONS.reduce((s, entity) => s + agg(D, entity, metricKey[key], idx)[field], 0);
+  };
+  const pctOfSales = (x: number, base: number) => (base ? (x / base) * 100 : null);
+  const totalSales = { v: sumField('sales', 'v'), b: sumField('sales', 'b'), py: sumField('sales', 'py') };
+  const totalEbitda = { v: sumField('ebitda', 'v'), b: sumField('ebitda', 'b'), py: sumField('ebitda', 'py') };
+  const totalCogs = { v: sumField('cogs', 'v'), b: sumField('cogs', 'b'), py: sumField('cogs', 'py') };
+  const totalLabor = { v: sumField('labor', 'v'), b: sumField('labor', 'b'), py: sumField('labor', 'py') };
+  const totalOpex = { v: sumField('opex', 'v'), b: sumField('opex', 'b'), py: sumField('opex', 'py') };
+  const totals = {
+    entity: 'All Locations',
+    sales: totalSales, ebitda: totalEbitda,
+    ebitdaPct: pctOfSales(totalEbitda.v, totalSales.v),
+    ebitdaBudPct: pctOfSales(totalEbitda.b, totalSales.b),
+    ebitdaPyPct: pctOfSales(totalEbitda.py, totalSales.py),
+    cogsPct: pctOfSales(totalCogs.v, totalSales.v),
+    cogsBudPct: pctOfSales(totalCogs.b, totalSales.b),
+    cogsPyPct: pctOfSales(totalCogs.py, totalSales.py),
+    laborPct: pctOfSales(totalLabor.v, totalSales.v),
+    laborBudPct: pctOfSales(totalLabor.b, totalSales.b),
+    laborPyPct: pctOfSales(totalLabor.py, totalSales.py),
+    opexPct: pctOfSales(totalOpex.v, totalSales.v),
+    opexBudPct: pctOfSales(totalOpex.b, totalSales.b),
+    opexPyPct: pctOfSales(totalOpex.py, totalSales.py),
+  };
+
   return (
     <div className="panel active" id="panel-locations">
       <div className="loc-cards">
@@ -78,10 +110,10 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
                 {fmt$(r.ebitda.v)} <span className="loc-metric-pct">{fmtPct(r.ebitdaPct)}</span>
               </div>
               <div className="loc-metric-subs">
-                <div className={'loc-metric-sub ' + varCls(r.ebitda.v - r.ebitda.b, true)}>
+                <div className={'loc-metric-sub ' + varCls(r.ebitda.v - r.ebitda.b, false)}>
                   {fmtVar(r.ebitda.v - r.ebitda.b)} ({fmtVarPct(ppDiff(r.ebitdaPct, r.ebitdaBudPct))}) vs Bud
                 </div>
-                <div className={'loc-metric-sub ' + varCls(r.ebitda.v - r.ebitda.py, true)}>
+                <div className={'loc-metric-sub ' + varCls(r.ebitda.v - r.ebitda.py, false)}>
                   {fmtVar(r.ebitda.v - r.ebitda.py)} ({fmtVarPct(ppDiff(r.ebitdaPct, r.ebitdaPyPct))}) vs PY
                 </div>
               </div>
@@ -152,7 +184,8 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <thead>
               <tr>
                 <th>Location</th>
-                <th>Sales</th><th>Bud</th><th>Var Bud</th><th>PY</th><th>Var PY</th>
+                <th>Sales</th><th>Bud</th><th>Var Bud $</th><th>Var Bud %</th><th>PY</th><th>Var PY $</th><th>Var PY %</th>
+                <th>EBITDA</th><th>Bud</th><th>Var Bud $</th><th>Var Bud %</th><th>PY</th><th>Var PY $</th><th>Var PY %</th>
                 <th>COGS</th><th>Bud</th><th>Var Bud</th><th>PY</th><th>Var PY</th>
                 <th>Labor</th><th>Bud</th><th>Var Bud</th><th>PY</th><th>Var PY</th>
                 <th>OpEx</th><th>Bud</th><th>Var Bud</th><th>PY</th><th>Var PY</th>
@@ -164,9 +197,19 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
                   <td>{r.entity}</td>
                   <td>{fmt$(r.sales.v)}</td>
                   <td>{fmt$(r.sales.b)}</td>
-                  <td className={varCls(r.sales.v - r.sales.b, false)}>{fmtVar(r.sales.v - r.sales.b)} {fmtVarPct(pctVar(r.sales.v, r.sales.b))}</td>
+                  <td className={varCls(r.sales.v - r.sales.b, false)}>{fmtVar(r.sales.v - r.sales.b)}</td>
+                  <td className={varCls(r.sales.v - r.sales.b, false)}>{fmtVarPct(pctVar(r.sales.v, r.sales.b))}</td>
                   <td>{fmt$(r.sales.py)}</td>
-                  <td className={varCls(r.sales.v - r.sales.py, false)}>{fmtVar(r.sales.v - r.sales.py)} {fmtVarPct(pctVar(r.sales.v, r.sales.py))}</td>
+                  <td className={varCls(r.sales.v - r.sales.py, false)}>{fmtVar(r.sales.v - r.sales.py)}</td>
+                  <td className={varCls(r.sales.v - r.sales.py, false)}>{fmtVarPct(pctVar(r.sales.v, r.sales.py))}</td>
+
+                  <td>{fmt$(r.ebitda.v)}</td>
+                  <td>{fmt$(r.ebitda.b)}</td>
+                  <td className={varCls(r.ebitda.v - r.ebitda.b, false)}>{fmtVar(r.ebitda.v - r.ebitda.b)}</td>
+                  <td className={varCls(r.ebitda.v - r.ebitda.b, false)}>{fmtVarPct(ppDiff(r.ebitdaPct, r.ebitdaBudPct))}</td>
+                  <td>{fmt$(r.ebitda.py)}</td>
+                  <td className={varCls(r.ebitda.v - r.ebitda.py, false)}>{fmtVar(r.ebitda.v - r.ebitda.py)}</td>
+                  <td className={varCls(r.ebitda.v - r.ebitda.py, false)}>{fmtVarPct(ppDiff(r.ebitdaPct, r.ebitdaPyPct))}</td>
 
                   <td>{fmtPct(r.cogsPct)}</td>
                   <td>{fmtPct(r.cogsBudPct)}</td>
@@ -187,6 +230,42 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
                   <td className={varCls(ppDiff(r.opexPct, r.opexPyPct), true)}>{fmtVarPct(ppDiff(r.opexPct, r.opexPyPct))}</td>
                 </tr>
               ))}
+              <tr className="total-row">
+                <td>{totals.entity}</td>
+                <td>{fmt$(totals.sales.v)}</td>
+                <td>{fmt$(totals.sales.b)}</td>
+                <td className={varCls(totals.sales.v - totals.sales.b, false)}>{fmtVar(totals.sales.v - totals.sales.b)}</td>
+                <td className={varCls(totals.sales.v - totals.sales.b, false)}>{fmtVarPct(pctVar(totals.sales.v, totals.sales.b))}</td>
+                <td>{fmt$(totals.sales.py)}</td>
+                <td className={varCls(totals.sales.v - totals.sales.py, false)}>{fmtVar(totals.sales.v - totals.sales.py)}</td>
+                <td className={varCls(totals.sales.v - totals.sales.py, false)}>{fmtVarPct(pctVar(totals.sales.v, totals.sales.py))}</td>
+
+                <td>{fmt$(totals.ebitda.v)}</td>
+                <td>{fmt$(totals.ebitda.b)}</td>
+                <td className={varCls(totals.ebitda.v - totals.ebitda.b, false)}>{fmtVar(totals.ebitda.v - totals.ebitda.b)}</td>
+                <td className={varCls(totals.ebitda.v - totals.ebitda.b, false)}>{fmtVarPct(ppDiff(totals.ebitdaPct, totals.ebitdaBudPct))}</td>
+                <td>{fmt$(totals.ebitda.py)}</td>
+                <td className={varCls(totals.ebitda.v - totals.ebitda.py, false)}>{fmtVar(totals.ebitda.v - totals.ebitda.py)}</td>
+                <td className={varCls(totals.ebitda.v - totals.ebitda.py, false)}>{fmtVarPct(ppDiff(totals.ebitdaPct, totals.ebitdaPyPct))}</td>
+
+                <td>{fmtPct(totals.cogsPct)}</td>
+                <td>{fmtPct(totals.cogsBudPct)}</td>
+                <td className={varCls(ppDiff(totals.cogsPct, totals.cogsBudPct), true)}>{fmtVarPct(ppDiff(totals.cogsPct, totals.cogsBudPct))}</td>
+                <td>{fmtPct(totals.cogsPyPct)}</td>
+                <td className={varCls(ppDiff(totals.cogsPct, totals.cogsPyPct), true)}>{fmtVarPct(ppDiff(totals.cogsPct, totals.cogsPyPct))}</td>
+
+                <td>{fmtPct(totals.laborPct)}</td>
+                <td>{fmtPct(totals.laborBudPct)}</td>
+                <td className={varCls(ppDiff(totals.laborPct, totals.laborBudPct), true)}>{fmtVarPct(ppDiff(totals.laborPct, totals.laborBudPct))}</td>
+                <td>{fmtPct(totals.laborPyPct)}</td>
+                <td className={varCls(ppDiff(totals.laborPct, totals.laborPyPct), true)}>{fmtVarPct(ppDiff(totals.laborPct, totals.laborPyPct))}</td>
+
+                <td>{fmtPct(totals.opexPct)}</td>
+                <td>{fmtPct(totals.opexBudPct)}</td>
+                <td className={varCls(ppDiff(totals.opexPct, totals.opexBudPct), true)}>{fmtVarPct(ppDiff(totals.opexPct, totals.opexBudPct))}</td>
+                <td>{fmtPct(totals.opexPyPct)}</td>
+                <td className={varCls(ppDiff(totals.opexPct, totals.opexPyPct), true)}>{fmtVarPct(ppDiff(totals.opexPct, totals.opexPyPct))}</td>
+              </tr>
             </tbody>
           </table>
         </div>
