@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { login } from '@/lib/api';
 
 export default function LoginPage() {
-  const router = useRouter();
   const emailRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,12 +12,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('wbr_token')) {
-      router.replace('/dashboard');
-      return;
-    }
     emailRef.current?.focus();
-  }, [router]);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,10 +21,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { token, user } = await login(email.trim(), password);
+      // The server already set the wbr_token cookie via Set-Cookie on this
+      // response. localStorage mirrors it for client-side Bearer-header calls.
       localStorage.setItem('wbr_token', token);
       localStorage.setItem('wbr_role', user.role ?? 'viewer');
-      document.cookie = `wbr_token=${token}; path=/; max-age=28800; SameSite=Lax`;
-      router.replace('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);

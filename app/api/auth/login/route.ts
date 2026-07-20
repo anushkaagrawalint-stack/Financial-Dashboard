@@ -36,5 +36,15 @@ export async function POST(request: Request) {
     process.env.JWT_SECRET!,
     { expiresIn: '8h' },
   );
-  return NextResponse.json({ token, user: { email: normalized, role: user.role } });
+
+  const res = NextResponse.json({ token, user: { email: normalized, role: user.role } });
+  // Set the cookie via the response header (not client-side document.cookie) so
+  // middleware sees it reliably on the very next request — no client write/timing
+  // dependency before the post-login navigation.
+  res.cookies.set('wbr_token', token, {
+    path: '/',
+    maxAge: 28800,
+    sameSite: 'lax',
+  });
+  return res;
 }
