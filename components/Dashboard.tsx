@@ -8,10 +8,12 @@ import RevenuePanel from './panels/RevenuePanel';
 import ExpensesPanel from './panels/ExpensesPanel';
 import SummaryPanel from './panels/SummaryPanel';
 import FullPnlPanel from './panels/FullPnlPanel';
+import LocationsPanel from './panels/LocationsPanel';
 import type { DashboardData } from '@/lib/types';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'locations', label: 'Location Overview' },
   { id: 'revenue', label: 'Revenue Channels' },
   { id: 'expenses', label: 'Expenses' },
   { id: 'summary', label: 'P&L Summary' },
@@ -105,6 +107,9 @@ export default function Dashboard() {
       <div className="main">
         {activeTab === 'overview' && (
           <OverviewPanel D={data} curEntity={curEntity} curPeriod={curPeriod} />
+        )}
+        {activeTab === 'locations' && (
+          <LocationsPanel D={data} curPeriod={curPeriod} />
         )}
         {activeTab === 'revenue' && (
           <RevenuePanel D={data} curEntity={curEntity} curPeriod={curPeriod} />

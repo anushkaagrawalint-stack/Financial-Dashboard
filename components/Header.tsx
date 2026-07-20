@@ -54,7 +54,7 @@ export default function Header({ D, curEntity, curPeriod, activeTab, onEntityCha
 
       <div className="hdr-right">
         <div className="hdr-controls">
-          <div className="sel-wrap" style={{ display: activeTab === 'fullpnl' ? 'none' : '' }}>
+          <div className="sel-wrap" style={{ display: (activeTab === 'fullpnl' || activeTab === 'locations') ? 'none' : '' }}>
             <span className="sel-label">Location</span>
             <LocationSelect value={curEntity} onChange={onEntityChange} />
           </div>
