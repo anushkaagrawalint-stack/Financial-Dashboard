@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
-import { agg, getIdx, fmt$, fmtPct } from '@/lib/utils';
+import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar } from '@/lib/utils';
 
 interface Props {
   D: DashboardData;
@@ -10,6 +10,7 @@ interface Props {
 }
 
 const ALL_LOCS = ['Ballpark', 'MVT', 'National Landing', 'Mosaic', 'Rockville'];
+const SELECT_OPTIONS = ['all', 'Consolidated', ...ALL_LOCS];
 
 interface SubItem { lbl: string; key: string; children?: SubItem[]; subKey?: string; }
 interface GrpRow { lbl: string; key: string; sub?: SubItem[]; useEntity?: string; }
@@ -18,6 +19,8 @@ function cellFmtVal(v: number | null | undefined, pct: number | null | undefined
   if (v == null) return '—';
   return fmt$(v) + ' (' + fmtPct(pct) + ')';
 }
+
+// ── Compare mode (All Locations): one combined "$ (%)" column per location ──
 
 function LocCell({ D, loc, dataKey, idx, subtractKey }: { D: DashboardData; loc: string; dataKey: string; idx: number[]; subtractKey?: string }) {
   const a = agg(D, loc, dataKey, idx);
@@ -132,6 +135,145 @@ function TotRow({ D, lbl, dataKey, locs, idx }: {
 
 function SecHdr({ label, colCount }: { label: string; colCount: number }) {
   return <tr className="sec-hdr"><td colSpan={colCount}>{label}</td></tr>;
+}
+
+// ── Detail mode (single entity): full Actual/Budget/PY + variance columns ──
+
+interface RowVals { v: number; b: number; py: number; actPct: number | null; budPct: number | null; pyPct: number | null; }
+
+function computeDetailRow(D: DashboardData, selectedLoc: string, dataKey: string, subtractKey: string | undefined, useEntity: string | undefined, idx: number[]): RowVals | null {
+  let entity: string;
+  let tsEntity: string;
+  if (useEntity) {
+    if (selectedLoc !== 'Consolidated') return null; // corporate rows only apply at the consolidated level
+    entity = useEntity;
+    tsEntity = 'Consolidated';
+  } else {
+    entity = selectedLoc;
+    tsEntity = selectedLoc;
+  }
+  const a = agg(D, entity, dataKey, idx);
+  let v = a.v, b = a.b, py = a.py;
+  if (subtractKey) {
+    const s = agg(D, entity, subtractKey, idx);
+    v -= s.v; b -= s.b; py -= s.py;
+  }
+  const ts = agg(D, tsEntity, 'Total Sales', idx);
+  const actPct = ts.v ? (v / ts.v) * 100 : null;
+  const budPct = ts.b ? (b / ts.b) * 100 : null;
+  const pyPct = ts.py ? (py / ts.py) * 100 : null;
+  return { v, b, py, actPct, budPct, pyPct };
+}
+
+function DetailCells({ row }: { row: RowVals | null }) {
+  if (!row) {
+    return <>{Array.from({ length: 10 }).map((_, i) => <td key={i}>—</td>)}</>;
+  }
+  const { v, b, py, actPct, budPct, pyPct } = row;
+  return (
+    <>
+      <td>{fmt$(v)}</td>
+      <td>{fmtPct(actPct)}</td>
+      <td>{fmt$(b)}</td>
+      <td>{fmtPct(budPct)}</td>
+      <td>{fmtVar(v - b)}</td>
+      <td>{fmtVarPct(pctVar(v, b))}</td>
+      <td>{fmt$(py)}</td>
+      <td>{fmtPct(pyPct)}</td>
+      <td>{fmtVar(v - py)}</td>
+      <td>{fmtVarPct(pctVar(v, py))}</td>
+    </>
+  );
+}
+
+function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, openSubs, onToggleSub, useEntity }: {
+  D: DashboardData; selectedLoc: string; lbl: string; dataKey: string; sub?: SubItem[];
+  idx: number[]; open: boolean; onToggle: () => void;
+  openSubs: Set<string>; onToggleSub: (key: string) => void;
+  useEntity?: string;
+}) {
+  const hasSub = sub && sub.length > 0;
+  const rowVal = computeDetailRow(D, selectedLoc, dataKey, undefined, useEntity, idx);
+
+  const subRows: React.ReactNode[] = [];
+  if (hasSub && open) {
+    for (const s of sub!) {
+      const hasChildren = !!(s.children && s.children.length > 0);
+      const isSubOpen = openSubs.has(s.key);
+      const sVal = computeDetailRow(D, selectedLoc, s.key, s.subKey, useEntity, idx);
+      subRows.push(
+        <tr key={s.key} className="sub-row"
+          onClick={hasChildren ? () => onToggleSub(s.key) : undefined}
+          style={{ cursor: hasChildren ? 'pointer' : undefined }}>
+          <td style={{ paddingLeft: 34 }}>
+            {hasChildren
+              ? <span className="toggle-icon" style={{ fontSize: 9 }}>{isSubOpen ? '▼' : '▶'}</span>
+              : <span style={{ display: 'inline-block', width: 14 }} />
+            }
+            {s.lbl}
+          </td>
+          <DetailCells row={sVal} />
+        </tr>
+      );
+      if (hasChildren && isSubOpen) {
+        for (const child of s.children!) {
+          const hasGrandChildren = !!(child.children && child.children.length > 0);
+          const isChildOpen = openSubs.has(child.key);
+          const childVal = computeDetailRow(D, selectedLoc, child.key, undefined, useEntity, idx);
+          subRows.push(
+            <tr key={'c3-' + child.key} className="sub-row"
+              onClick={hasGrandChildren ? () => onToggleSub(child.key) : undefined}
+              style={{ cursor: hasGrandChildren ? 'pointer' : undefined }}>
+              <td style={{ paddingLeft: 54 }}>
+                {hasGrandChildren
+                  ? <span className="toggle-icon" style={{ fontSize: 9 }}>{isChildOpen ? '▼' : '▶'}</span>
+                  : <span style={{ display: 'inline-block', width: 14 }} />
+                }
+                {child.lbl}
+              </td>
+              <DetailCells row={childVal} />
+            </tr>
+          );
+          if (hasGrandChildren && isChildOpen) {
+            for (const gc of child.children!) {
+              const gcVal = computeDetailRow(D, selectedLoc, gc.key, undefined, useEntity, idx);
+              subRows.push(
+                <tr key={'c4-' + gc.key} className="sub-row">
+                  <td style={{ paddingLeft: 74 }}>
+                    <span style={{ display: 'inline-block', width: 14 }} />
+                    {gc.lbl}
+                  </td>
+                  <DetailCells row={gcVal} />
+                </tr>
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return (
+    <>
+      <tr className="row-group-hdr" onClick={hasSub ? onToggle : undefined} style={hasSub ? { cursor: 'pointer' } : undefined}>
+        <td>{hasSub && <span className="toggle-icon">{open ? '▼' : '▶'}</span>}{lbl}</td>
+        <DetailCells row={rowVal} />
+      </tr>
+      {subRows}
+    </>
+  );
+}
+
+function DetailTotRow({ D, selectedLoc, lbl, dataKey, idx }: {
+  D: DashboardData; selectedLoc: string; lbl: string; dataKey: string; idx: number[];
+}) {
+  const val = computeDetailRow(D, selectedLoc, dataKey, undefined, undefined, idx);
+  return (
+    <tr className="total-row">
+      <td>{lbl}</td>
+      <DetailCells row={val} />
+    </tr>
+  );
 }
 
 const GROUPS: (GrpRow & { type?: 'total' | 'sec' })[] = [
@@ -368,13 +510,23 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]} (${idx.length} periods)`
     : D.periods[idx[0]];
 
-  const [checkedLocs, setCheckedLocs] = useState<string[]>([...ALL_LOCS]);
+  const [selectedLoc, setSelectedLoc] = useState('all');
   const [ddOpen, setDdOpen] = useState(false);
+  const ddRef = useRef<HTMLDivElement>(null);
   const [openGrps, setOpenGrps] = useState<Set<string>>(new Set());
   const [openSubs, setOpenSubs] = useState<Set<string>>(new Set());
 
-  const activeLocs = ['Consolidated', ...checkedLocs];
-  const colCount = 1 + activeLocs.length;
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const isCompare = selectedLoc === 'all';
+  const activeLocs = ['Consolidated', ...ALL_LOCS];
+  const colCount = 1 + (isCompare ? activeLocs.length : 10);
 
   function toggleGrp(key: string) {
     setOpenGrps(prev => {
@@ -392,28 +544,14 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
     });
   }
 
-  function toggleLoc(loc: string) {
-    setCheckedLocs(prev =>
-      prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
-    );
-  }
-
-  function toggleAll(checked: boolean) {
-    setCheckedLocs(checked ? [...ALL_LOCS] : []);
-  }
-
-  const ddLabel = checkedLocs.length === ALL_LOCS.length
-    ? 'All Locations'
-    : checkedLocs.length === 0
-    ? 'Consolidated only'
-    : `${checkedLocs.length} locations`;
+  const ddLabel = selectedLoc === 'all' ? 'All Locations' : selectedLoc;
 
   return (
     <div className="panel active" id="panel-fullpnl">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="sel-label" style={{ color: '#7c3aed' }}>Locations</span>
-          <div className="loc-dd-wrap" id="loc-dd-wrap">
+          <span className="sel-label" style={{ color: '#7c3aed' }}>Location</span>
+          <div className="loc-dd-wrap" ref={ddRef}>
             <div className="loc-dd-trigger" onClick={() => setDdOpen(o => !o)}>
               <span>{ddLabel}</span>
               <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0 }}>
@@ -422,24 +560,16 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
             </div>
             {ddOpen && (
               <div className="loc-dd-menu open">
-                <label className="loc-dd-item loc-dd-all">
-                  <input
-                    type="checkbox"
-                    checked={checkedLocs.length === ALL_LOCS.length}
-                    onChange={e => toggleAll(e.target.checked)}
-                  />
-                  <span>All Locations</span>
-                </label>
-                <div className="loc-dd-sep" />
-                {ALL_LOCS.map(loc => (
-                  <label key={loc} className="loc-dd-item">
-                    <input
-                      type="checkbox"
-                      checked={checkedLocs.includes(loc)}
-                      onChange={() => toggleLoc(loc)}
-                    />
-                    <span>{loc}</span>
-                  </label>
+                {SELECT_OPTIONS.map((opt, i) => (
+                  <div key={opt}>
+                    <div
+                      className={'loc-dd-item' + (opt === 'all' ? ' loc-dd-all' : '')}
+                      onClick={() => { setSelectedLoc(opt); setDdOpen(false); }}
+                    >
+                      <span>{opt === 'all' ? 'All Locations' : opt}</span>
+                    </div>
+                    {i === 0 && <div className="loc-dd-sep" />}
+                  </div>
                 ))}
               </div>
             )}
@@ -450,21 +580,36 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
       <div className="tcard">
         <div className="tcard-hdr">
           <span className="tcard-title">Full P&L — {rangeLabel}</span>
-          <span className="tcard-meta">$ (% of sales)</span>
+          <span className="tcard-meta">{isCompare ? '$ (% of sales)' : 'Actual vs Budget vs Prior Year'}</span>
         </div>
         <div className="tscroll">
-          <table className="dtable">
+          <table className="dtable dtable-sticky-first">
             <thead>
-              <tr>
-                <th style={{ minWidth: 220 }}>Line Item</th>
-                {activeLocs.map(l => <th key={l} style={{ minWidth: 150 }}>{l}</th>)}
-              </tr>
+              {isCompare ? (
+                <tr>
+                  <th style={{ minWidth: 220 }}>Line Item</th>
+                  {activeLocs.map(l => <th key={l} style={{ minWidth: 150 }}>{l}</th>)}
+                </tr>
+              ) : (
+                <tr>
+                  <th style={{ minWidth: 220 }}>Line Item</th>
+                  <th>Actual $</th><th>Actual %</th>
+                  <th>Budget $</th><th>Budget %</th>
+                  <th>Var $ vs Bud</th><th>Var % vs Bud</th>
+                  <th>PY $</th><th>PY %</th>
+                  <th>Var $ vs PY</th><th>Var % vs PY</th>
+                </tr>
+              )}
             </thead>
             <tbody>
               {GROUPS.map((g, gi) => {
                 if (g.type === 'sec') return <SecHdr key={gi} label={g.lbl} colCount={colCount} />;
-                if (g.type === 'total') return <TotRow key={gi} D={D} lbl={g.lbl} dataKey={g.key} locs={activeLocs} idx={idx} />;
-                return (
+                if (g.type === 'total') {
+                  return isCompare
+                    ? <TotRow key={gi} D={D} lbl={g.lbl} dataKey={g.key} locs={activeLocs} idx={idx} />
+                    : <DetailTotRow key={gi} D={D} selectedLoc={selectedLoc} lbl={g.lbl} dataKey={g.key} idx={idx} />;
+                }
+                return isCompare ? (
                   <GrpRowComp
                     key={gi}
                     D={D}
@@ -472,6 +617,21 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
                     dataKey={g.key}
                     sub={g.sub}
                     locs={activeLocs}
+                    idx={idx}
+                    open={openGrps.has(g.key + gi)}
+                    onToggle={() => toggleGrp(g.key + gi)}
+                    openSubs={openSubs}
+                    onToggleSub={toggleSub}
+                    useEntity={g.useEntity}
+                  />
+                ) : (
+                  <DetailGrpRow
+                    key={gi}
+                    D={D}
+                    selectedLoc={selectedLoc}
+                    lbl={g.lbl}
+                    dataKey={g.key}
+                    sub={g.sub}
                     idx={idx}
                     open={openGrps.has(g.key + gi)}
                     onToggle={() => toggleGrp(g.key + gi)}

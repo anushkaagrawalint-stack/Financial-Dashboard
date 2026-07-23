@@ -180,7 +180,7 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
           <span className="tcard-meta">{labels.length > 1 ? `${labels[0]} – ${labels[labels.length - 1]}` : labels[0]}</span>
         </div>
         <div className="tscroll">
-          <table className="dtable">
+          <table className="dtable dtable-sticky-first">
             <thead>
               <tr>
                 <th>Location</th>
