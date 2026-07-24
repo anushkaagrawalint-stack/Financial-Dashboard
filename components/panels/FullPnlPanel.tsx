@@ -165,11 +165,18 @@ function computeDetailRow(D: DashboardData, selectedLoc: string, dataKey: string
   return { v, b, py, actPct, budPct, pyPct };
 }
 
-function DetailCells({ row }: { row: RowVals | null }) {
+// COGS and Payroll: Var % vs Bud/PY is Actual% of sales minus Budget/PY% of
+// sales (a percentage-point diff), not the relative $ variance used elsewhere.
+const PCT_LINE_KEYS = new Set(['Total Cost of Goods Sold', 'Total Payroll Expenses']);
+const ppDiff = (a: number | null, b: number | null) => (a != null && b != null ? a - b : null);
+
+function DetailCells({ row, isPctLine }: { row: RowVals | null; isPctLine?: boolean }) {
   if (!row) {
     return <>{Array.from({ length: 10 }).map((_, i) => <td key={i}>—</td>)}</>;
   }
   const { v, b, py, actPct, budPct, pyPct } = row;
+  const varBudPct = isPctLine ? ppDiff(actPct, budPct) : pctVar(v, b);
+  const varPyPct = isPctLine ? ppDiff(actPct, pyPct) : pctVar(v, py);
   return (
     <>
       <td>{fmt$(v)}</td>
@@ -177,11 +184,11 @@ function DetailCells({ row }: { row: RowVals | null }) {
       <td>{fmt$(b)}</td>
       <td>{fmtPct(budPct)}</td>
       <td>{fmtVar(v - b)}</td>
-      <td>{fmtVarPct(pctVar(v, b))}</td>
+      <td>{fmtVarPct(varBudPct)}</td>
       <td>{fmt$(py)}</td>
       <td>{fmtPct(pyPct)}</td>
       <td>{fmtVar(v - py)}</td>
-      <td>{fmtVarPct(pctVar(v, py))}</td>
+      <td>{fmtVarPct(varPyPct)}</td>
     </>
   );
 }
@@ -194,6 +201,7 @@ function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, 
 }) {
   const hasSub = sub && sub.length > 0;
   const rowVal = computeDetailRow(D, selectedLoc, dataKey, undefined, useEntity, idx);
+  const isPctLine = PCT_LINE_KEYS.has(dataKey);
 
   const subRows: React.ReactNode[] = [];
   if (hasSub && open) {
@@ -257,7 +265,7 @@ function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, 
     <>
       <tr className="row-group-hdr" onClick={hasSub ? onToggle : undefined} style={hasSub ? { cursor: 'pointer' } : undefined}>
         <td>{hasSub && <span className="toggle-icon">{open ? '▼' : '▶'}</span>}{lbl}</td>
-        <DetailCells row={rowVal} />
+        <DetailCells row={rowVal} isPctLine={isPctLine} />
       </tr>
       {subRows}
     </>
