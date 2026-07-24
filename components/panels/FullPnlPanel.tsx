@@ -220,7 +220,7 @@ function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, 
             }
             {s.lbl}
           </td>
-          <DetailCells row={sVal} />
+          <DetailCells row={sVal} isPctLine={isPctLine} />
         </tr>
       );
       if (hasChildren && isSubOpen) {
@@ -239,7 +239,7 @@ function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, 
                 }
                 {child.lbl}
               </td>
-              <DetailCells row={childVal} />
+              <DetailCells row={childVal} isPctLine={isPctLine} />
             </tr>
           );
           if (hasGrandChildren && isChildOpen) {
@@ -251,7 +251,7 @@ function DetailGrpRow({ D, selectedLoc, lbl, dataKey, sub, idx, open, onToggle, 
                     <span style={{ display: 'inline-block', width: 14 }} />
                     {gc.lbl}
                   </td>
-                  <DetailCells row={gcVal} />
+                  <DetailCells row={gcVal} isPctLine={isPctLine} />
                 </tr>
               );
             }
