@@ -9,7 +9,7 @@ import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
 import { getRole } from '@/lib/api';
-import { addExpensesSheet, addExpenseCategorySheet } from '@/lib/exportExpenses';
+import { addExpenseCategorySheet } from '@/lib/exportExpenses';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
 
@@ -244,7 +244,6 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [bulkExporting, setBulkExporting] = useState(false);
   useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const trendRef = useChartRegistration('expenses:trend');
@@ -256,8 +255,10 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      addExpensesSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
-      await downloadWorkbook(wb, `Expenses - ${curEntity} - ${curPeriod}.xlsx`);
+      // Match exactly what's on screen: only the currently selected category,
+      // not every category stacked into one sheet.
+      addExpenseCategorySheet(wb, D, curEntity, curPeriod, curSub, []); // table only, no charts
+      await downloadWorkbook(wb, `Expenses (${CFGS[curSub].title}) - ${curEntity} - ${curPeriod}.xlsx`);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Download failed');
     } finally {
@@ -269,38 +270,6 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
     const img = getChartImage(key);
     if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
     downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
-  }
-
-  // Cycles through every expense category (reusing the live Grouped Trend /
-  // Breakdown / % of Sales charts already on screen), snapshotting each one
-  // into its own properly named sheet — table + charts together — instead
-  // of one combined table.
-  async function handleDownloadAllCategories() {
-    const prevSub = curSub;
-    setBulkExporting(true);
-    try {
-      const ExcelJS = (await import('exceljs')).default;
-      const wb = new ExcelJS.Workbook();
-      for (const tab of SUBTABS) {
-        if (tab.id === 'corporate' && !isAllLocations) continue;
-        setCurSub(tab.id);
-        await new Promise(r => setTimeout(r, 350));
-        const images: { key: string; image: string }[] = [];
-        const trendImg = getChartImage('expenses:trend');
-        if (trendImg) images.push({ key: 'expenses:trend', image: trendImg });
-        const breakdownImg = getChartImage('expenses:breakdown');
-        if (breakdownImg) images.push({ key: 'expenses:breakdown', image: breakdownImg });
-        const pctImg = getChartImage('expenses:pct-of-sales');
-        if (pctImg) images.push({ key: 'expenses:pct-of-sales', image: pctImg });
-        addExpenseCategorySheet(wb, D, curEntity, curPeriod, tab.id, images);
-      }
-      await downloadWorkbook(wb, `Expenses (All) - ${curEntity} - ${curPeriod}.xlsx`);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Download failed');
-    } finally {
-      setCurSub(prevSub);
-      setBulkExporting(false);
-    }
   }
 
   useEffect(() => {
@@ -523,25 +492,16 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-expenses">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div className="subtabs">
-          {SUBTABS.filter(st => isAllLocations || st.id !== 'corporate').map(st => (
-            <div
-              key={st.id}
-              className={`subtab${curSub === st.id ? ' active' : ''}`}
-              onClick={() => setCurSub(st.id)}
-            >
-              {st.label}
-            </div>
-          ))}
-        </div>
-        {isAdmin && (
-          <DownloadButton
-            label={bulkExporting ? 'Exporting all categories…' : 'Download all categories'}
-            busy={bulkExporting}
-            onClick={handleDownloadAllCategories}
-          />
-        )}
+      <div className="subtabs">
+        {SUBTABS.filter(st => isAllLocations || st.id !== 'corporate').map(st => (
+          <div
+            key={st.id}
+            className={`subtab${curSub === st.id ? ' active' : ''}`}
+            onClick={() => setCurSub(st.id)}
+          >
+            {st.label}
+          </div>
+        ))}
       </div>
 
       <div>

@@ -19,6 +19,11 @@ function subItemAgg(D: DashboardData, entity: string, idx: number[], sub: SubIte
   return r;
 }
 
+// Mirrors the on-screen "Channel Detail — Actual · LY · Budget" table exactly
+// when "All Channels" is selected: top-level channels only (no subitem
+// breakdown — that's what the per-channel sheet/download is for), in the same
+// column order (Actual $, LY $, Var % vs LY, Budget $, Var % vs Budget), with
+// Discounts & Adjustments and Total Sales as the last two rows.
 export function addRevenueSheet(
   wb: ExcelJS.Workbook, D: DashboardData, curEntity: string, curPeriod: string,
   chartImages: { key: string; image: string }[],
@@ -27,40 +32,29 @@ export function addRevenueSheet(
   const sheetName = buildSheetName(`${LOC_ABBREV[curEntity] || curEntity} Revenue`, D.periods, idx);
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.getColumn(1).width = 28;
-  for (let i = 2; i <= 8; i++) ws.getColumn(i).width = 14;
+  for (let i = 2; i <= 6; i++) ws.getColumn(i).width = 14;
 
-  const header = ws.addRow(['Channel', 'Actual $', 'Budget $', 'Var $ vs Bud', 'Var % vs Bud', 'LY $', 'Var $ vs LY', 'Var % vs LY']);
+  const header = ws.addRow(['Channel', 'Actual $', 'LY $', 'Var % vs LY', 'Budget $', 'Var % vs Budget']);
   styleHeaderRow(header);
 
-  function writeRow(lbl: string, a: { v: number; b: number; py: number }, indent: number) {
+  // style is applied before the per-cell colors below, since setting
+  // row.font AFTER cell-level fonts have already been assigned wipes them.
+  function writeRow(lbl: string, a: { v: number; b: number; py: number }, style?: 'bold' | 'italic') {
     const row = ws.addRow([lbl]);
-    row.getCell(1).alignment = { indent };
+    if (style === 'bold') row.font = { bold: true };
+    if (style === 'italic') row.font = { italic: true };
     setMoney(row.getCell(2), a.v);
-    setMoney(row.getCell(3), a.b);
-    setMoney(row.getCell(4), a.v - a.b, varColor(a.v - a.b, false));
-    setPct(row.getCell(5), pctVar(a.v, a.b), varColor(pctVar(a.v, a.b), false));
-    setMoney(row.getCell(6), a.py);
-    setMoney(row.getCell(7), a.v - a.py, varColor(a.v - a.py, false));
-    setPct(row.getCell(8), pctVar(a.v, a.py), varColor(pctVar(a.v, a.py), false));
+    setMoney(row.getCell(3), a.py);
+    setPct(row.getCell(4), pctVar(a.v, a.py), varColor(pctVar(a.v, a.py), false));
+    setMoney(row.getCell(5), a.b);
+    setPct(row.getCell(6), pctVar(a.v, a.b), varColor(pctVar(a.v, a.b), false));
     return row;
   }
-
-  const salesAgg = agg(D, curEntity, 'Total Sales', idx);
-  const totalRow = writeRow('Total Sales', salesAgg, 0);
-  styleTotalRow(totalRow, 8);
 
   for (const chId of ALL_CHANNELS) {
     const cfg = CHANNEL_CFGS[chId];
     const chA = agg(D, curEntity, cfg.key, idx);
-    const row = writeRow(cfg.lbl, chA, 0);
-    row.font = { bold: true };
-    if (cfg.subitems) {
-      for (const sub of cfg.subitems) {
-        const a = subItemAgg(D, curEntity, idx, sub);
-        if (a.v === 0 && a.py === 0) continue;
-        writeRow(sub.lbl, a, 1);
-      }
-    }
+    writeRow(cfg.lbl, chA, 'bold');
   }
 
   const deductParts = DEDUCTION_KEYS.map(k => agg(D, curEntity, k, idx));
@@ -69,8 +63,11 @@ export function addRevenueSheet(
     b: deductParts.reduce((s, a) => s + a.b, 0),
     py: deductParts.reduce((s, a) => s + a.py, 0),
   };
-  const dRow = writeRow('Discounts & Adjustments', deductA, 0);
-  dRow.font = { italic: true };
+  writeRow('Discounts & Adjustments', deductA, 'italic');
+
+  const salesAgg = agg(D, curEntity, 'Total Sales', idx);
+  const totalRow = writeRow('Total Sales', salesAgg);
+  styleTotalRow(totalRow, 6);
 
   let row = ws.rowCount + 2;
   row = addChartImage(ws, chartImages, 'revenue:channel-trend', 'Channel Trend', row);
@@ -79,10 +76,13 @@ export function addRevenueSheet(
   return ws;
 }
 
-// One sheet per revenue channel — that channel's own detail rows plus its own
-// Channel Trend / Channel Mix chart snapshots (captured while the UI had that
-// channel selected), so "download all channels" produces a properly labeled
-// sheet per channel instead of one combined table.
+// One sheet per revenue channel — mirrors the on-screen single-channel
+// "Channel Detail" table exactly (subitems, then that channel's total row;
+// no Budget columns — the on-screen table doesn't show them for a single
+// channel either), plus that channel's own Channel Trend / Channel Mix chart
+// snapshots (captured while the UI had that channel selected), so "download
+// all channels" produces a properly labeled sheet per channel instead of one
+// combined table.
 export function addRevenueChannelSheet(
   wb: ExcelJS.Workbook, D: DashboardData, curEntity: string, curPeriod: string, chId: ChannelId,
   chartImages: { key: string; image: string }[],
@@ -92,35 +92,30 @@ export function addRevenueChannelSheet(
   const sheetName = buildSheetName(`${LOC_ABBREV[curEntity] || curEntity} ${cfg.lbl}`, D.periods, idx);
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.getColumn(1).width = 28;
-  for (let i = 2; i <= 8; i++) ws.getColumn(i).width = 14;
+  for (let i = 2; i <= 4; i++) ws.getColumn(i).width = 14;
 
-  const header = ws.addRow(['Channel', 'Actual $', 'Budget $', 'Var $ vs Bud', 'Var % vs Bud', 'LY $', 'Var $ vs LY', 'Var % vs LY']);
+  const header = ws.addRow(['Channel', 'Actual $', 'LY $', 'Var % vs LY']);
   styleHeaderRow(header);
 
-  function writeRow(lbl: string, a: { v: number; b: number; py: number }, indent: number) {
+  function writeRow(lbl: string, a: { v: number; b: number; py: number }) {
     const row = ws.addRow([lbl]);
-    row.getCell(1).alignment = { indent };
     setMoney(row.getCell(2), a.v);
-    setMoney(row.getCell(3), a.b);
-    setMoney(row.getCell(4), a.v - a.b, varColor(a.v - a.b, false));
-    setPct(row.getCell(5), pctVar(a.v, a.b), varColor(pctVar(a.v, a.b), false));
-    setMoney(row.getCell(6), a.py);
-    setMoney(row.getCell(7), a.v - a.py, varColor(a.v - a.py, false));
-    setPct(row.getCell(8), pctVar(a.v, a.py), varColor(pctVar(a.v, a.py), false));
+    setMoney(row.getCell(3), a.py);
+    setPct(row.getCell(4), pctVar(a.v, a.py), varColor(pctVar(a.v, a.py), false));
     return row;
   }
-
-  const chA = agg(D, curEntity, cfg.key, idx);
-  const totalRow = writeRow(cfg.lbl, chA, 0);
-  styleTotalRow(totalRow, 8);
 
   if (cfg.subitems) {
     for (const sub of cfg.subitems) {
       const a = subItemAgg(D, curEntity, idx, sub);
       if (a.v === 0 && a.py === 0) continue;
-      writeRow(sub.lbl, a, 1);
+      writeRow(sub.lbl, a);
     }
   }
+
+  const chA = agg(D, curEntity, cfg.key, idx);
+  const totalRow = writeRow(cfg.lbl, chA);
+  styleTotalRow(totalRow, 4);
 
   let row = ws.rowCount + 2;
   row = addChartImage(ws, chartImages, 'revenue:channel-trend', `${cfg.lbl} Trend`, row);

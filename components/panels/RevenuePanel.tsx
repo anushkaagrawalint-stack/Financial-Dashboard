@@ -81,7 +81,6 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [bulkExporting, setBulkExporting] = useState(false);
   useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const channelTrendRef = useChartRegistration('revenue:channel-trend');
@@ -92,8 +91,16 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      addRevenueSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
-      await downloadWorkbook(wb, `Revenue Channels - ${curEntity} - ${curPeriod}.xlsx`);
+      // Match exactly what's on screen: the full breakdown when "All Channels"
+      // is selected, or just that one channel's rows otherwise — not always
+      // the full breakdown regardless of the current selection.
+      if (selCh === 'all') {
+        addRevenueSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      } else {
+        addRevenueChannelSheet(wb, D, curEntity, curPeriod, selCh, []); // table only, no charts
+      }
+      const label = selCh === 'all' ? 'All Channels' : cfg.lbl;
+      await downloadWorkbook(wb, `Revenue Channels (${label}) - ${curEntity} - ${curPeriod}.xlsx`);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Download failed');
     } finally {
@@ -105,34 +112,6 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
     const img = getChartImage(key);
     if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
     downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
-  }
-
-  // Cycles through every channel (reusing the live Channel Trend/Mix charts
-  // already on screen), snapshotting each one into its own properly named
-  // sheet — table + charts together — instead of one combined table.
-  async function handleDownloadAllChannels() {
-    const prevSel = selCh;
-    setBulkExporting(true);
-    try {
-      const ExcelJS = (await import('exceljs')).default;
-      const wb = new ExcelJS.Workbook();
-      for (const chId of ALL_CHANNELS) {
-        setSelCh(chId);
-        await new Promise(r => setTimeout(r, 350));
-        const images: { key: string; image: string }[] = [];
-        const trendImg = getChartImage('revenue:channel-trend');
-        if (trendImg) images.push({ key: 'revenue:channel-trend', image: trendImg });
-        const mixImg = getChartImage('revenue:channel-mix');
-        if (mixImg) images.push({ key: 'revenue:channel-mix', image: mixImg });
-        addRevenueChannelSheet(wb, D, curEntity, curPeriod, chId, images);
-      }
-      await downloadWorkbook(wb, `Revenue Channels (All) - ${curEntity} - ${curPeriod}.xlsx`);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Download failed');
-    } finally {
-      setSelCh(prevSel);
-      setBulkExporting(false);
-    }
   }
 
   const cfg = CHANNEL_CFGS[selCh];
@@ -331,25 +310,16 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-revenue">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
-        <div className="chart-ctrl">
-          <label>Channel</label>
-          <select value={selCh} onChange={e => setSelCh(e.target.value as ChannelId)}>
-            <option value="all">All Channels</option>
-            <option value="inhouse">In-House</option>
-            <option value="takeout">Takeout</option>
-            <option value="delivery">Delivery</option>
-            <option value="catering">Catering</option>
-            <option value="offsites">Offsites</option>
-          </select>
-        </div>
-        {isAdmin && (
-          <DownloadButton
-            label={bulkExporting ? 'Exporting all channels…' : 'Download all channels'}
-            busy={bulkExporting}
-            onClick={handleDownloadAllChannels}
-          />
-        )}
+      <div className="chart-ctrl" style={{ marginBottom: 12 }}>
+        <label>Channel</label>
+        <select value={selCh} onChange={e => setSelCh(e.target.value as ChannelId)}>
+          <option value="all">All Channels</option>
+          <option value="inhouse">In-House</option>
+          <option value="takeout">Takeout</option>
+          <option value="delivery">Delivery</option>
+          <option value="catering">Catering</option>
+          <option value="offsites">Offsites</option>
+        </select>
       </div>
 
       <div className="kpis">

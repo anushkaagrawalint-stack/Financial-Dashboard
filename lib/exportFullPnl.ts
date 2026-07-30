@@ -26,15 +26,20 @@ export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: 
 
     const colCount = header.length;
 
-    function writeCompareLeaf(lbl: string, dataKey: string, subtractKey: string | undefined, useEntity: string | undefined, indent: number, colorValue: boolean) {
+    // Mirrors the on-screen "All Locations" compare view: every row is colored
+    // by raw sign (green/red), flipped for the expense-category subtrees (via
+    // isExp) — not just the profit subtotal rows. `bold` is applied before the
+    // per-cell colors below since setting row.font afterward would wipe them.
+    function writeCompareLeaf(lbl: string, dataKey: string, subtractKey: string | undefined, useEntity: string | undefined, indent: number, isExp: boolean, bold: boolean) {
       const row = ws.addRow([lbl]);
       row.getCell(1).alignment = { indent };
+      if (bold) row.font = { bold: true };
       let col = 2;
       for (const l of activeLocs) {
         const c = computeCompareCell(D, l, dataKey, subtractKey, useEntity, idx);
         const isBlank = !!useEntity && l !== 'Consolidated';
         const v = isBlank ? null : c.v;
-        setMoney(row.getCell(col), v, colorValue && v != null ? valueColor(v) : null);
+        setMoney(row.getCell(col), v, v != null ? varColor(v, isExp) : null);
         setPct(row.getCell(col + 1), isBlank ? null : c.pct);
         col += 2;
       }
@@ -49,21 +54,21 @@ export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: 
         continue;
       }
       if (g.type === 'total') {
-        const row = writeCompareLeaf(g.lbl, g.key, undefined, undefined, 0, true);
+        const row = writeCompareLeaf(g.lbl, g.key, undefined, undefined, 0, false, false);
         styleTotalRow(row, colCount);
         continue;
       }
-      const topRow = writeCompareLeaf(g.lbl, g.key, undefined, g.useEntity, 0, false);
-      topRow.font = { bold: true };
+      const isExp = EXPENSE_KEYS.has(g.key);
+      writeCompareLeaf(g.lbl, g.key, undefined, g.useEntity, 0, isExp, true);
       if (g.sub) {
         for (const s of g.sub) {
-          writeCompareLeaf(s.lbl, s.key, s.subKey, g.useEntity, 1, false);
+          writeCompareLeaf(s.lbl, s.key, s.subKey, g.useEntity, 1, isExp, false);
           if (s.children) {
             for (const c of s.children) {
-              writeCompareLeaf(c.lbl, c.key, undefined, g.useEntity, 2, false);
+              writeCompareLeaf(c.lbl, c.key, undefined, g.useEntity, 2, isExp, false);
               if (c.children) {
                 for (const gc of c.children) {
-                  writeCompareLeaf(gc.lbl, gc.key, undefined, g.useEntity, 3, false);
+                  writeCompareLeaf(gc.lbl, gc.key, undefined, g.useEntity, 3, isExp, false);
                 }
               }
             }

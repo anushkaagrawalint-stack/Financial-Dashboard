@@ -37,7 +37,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      addOverviewSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      addOverviewSheet(wb, D, curEntity, curPeriod, [], false); // Period Summary table only — no KPI table, no charts
       await downloadWorkbook(wb, `Overview - ${curEntity} - ${curPeriod}.xlsx`);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Download failed');

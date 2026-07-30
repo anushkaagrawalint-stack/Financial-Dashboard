@@ -5,6 +5,10 @@ import type ExcelJS from 'exceljs';
 // Returns the next free row after the image (so callers can stack multiple
 // charts down a sheet). If the chart wasn't captured (e.g. not mounted at
 // export time), writes a placeholder note instead and returns startRow + 2.
+//
+// An empty `chartImages` array means charts weren't requested at all for this
+// export (e.g. a table-only download) — in that case this is a no-op, so
+// table-only downloads don't end up with stray "(chart not available)" rows.
 export function addChartImage(
   ws: ExcelJS.Worksheet,
   chartImages: { key: string; image: string }[],
@@ -14,6 +18,8 @@ export function addChartImage(
   widthPx = 560,
   heightPx = 260,
 ): number {
+  if (chartImages.length === 0) return startRow;
+
   const titleRow = ws.getRow(startRow);
   titleRow.getCell(1).value = title;
   titleRow.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1A1F2E' } };
