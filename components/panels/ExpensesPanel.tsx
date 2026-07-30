@@ -7,6 +7,11 @@ import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
+import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { getRole } from '@/lib/api';
+import { addExpensesSheet, addExpenseCategorySheet } from '@/lib/exportExpenses';
+import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
   D: DashboardData;
@@ -14,8 +19,8 @@ interface Props {
   curPeriod: string;
 }
 
-interface ExpenseItem { lbl: string; key: string; children?: ExpenseItem[]; }
-interface ExpenseCfg {
+export interface ExpenseItem { lbl: string; key: string; children?: ExpenseItem[]; }
+export interface ExpenseCfg {
   title: string;
   color: string;
   totalKey: string;
@@ -23,7 +28,7 @@ interface ExpenseCfg {
   useEntity?: string;
 }
 
-const CFGS: Record<string, ExpenseCfg> = {
+export const CFGS: Record<string, ExpenseCfg> = {
   cogs: {
     title: 'Cost of Goods Sold', color: '#ef4444', totalKey: 'Total Cost of Goods Sold',
     items: [
@@ -219,7 +224,7 @@ const CFGS: Record<string, ExpenseCfg> = {
   },
 };
 
-const SUBTABS = [
+export const SUBTABS = [
   { id: 'cogs', label: 'COGS' },
   { id: 'labor', label: 'Labor' },
   { id: 'opex', label: 'OpEx' },
@@ -229,13 +234,74 @@ const SUBTABS = [
 
 const COLORS = ['#ef4444','#f59e0b','#8b5cf6','#60a5fa','#10b981','#fb923c','#9f7cef','#84cc16','#f472b6'];
 
-const isCogsOrLabor = (sub: string) => sub === 'cogs' || sub === 'labor';
+export const isCogsOrLabor = (sub: string) => sub === 'cogs' || sub === 'labor';
 
 export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   const [curSub, setCurSub] = useState('cogs');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const isAllLocations = curEntity === 'Consolidated';
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [bulkExporting, setBulkExporting] = useState(false);
+  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
+
+  const trendRef = useChartRegistration('expenses:trend');
+  const breakdownRef = useChartRegistration('expenses:breakdown');
+  const pctOfSalesRef = useChartRegistration('expenses:pct-of-sales');
+
+  async function handleDownloadTable() {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      addExpensesSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      await downloadWorkbook(wb, `Expenses - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownloadChart(key: string, label: string) {
+    const img = getChartImage(key);
+    if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
+    downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
+  }
+
+  // Cycles through every expense category (reusing the live Grouped Trend /
+  // Breakdown / % of Sales charts already on screen), snapshotting each one
+  // into its own properly named sheet — table + charts together — instead
+  // of one combined table.
+  async function handleDownloadAllCategories() {
+    const prevSub = curSub;
+    setBulkExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      for (const tab of SUBTABS) {
+        if (tab.id === 'corporate' && !isAllLocations) continue;
+        setCurSub(tab.id);
+        await new Promise(r => setTimeout(r, 350));
+        const images: { key: string; image: string }[] = [];
+        const trendImg = getChartImage('expenses:trend');
+        if (trendImg) images.push({ key: 'expenses:trend', image: trendImg });
+        const breakdownImg = getChartImage('expenses:breakdown');
+        if (breakdownImg) images.push({ key: 'expenses:breakdown', image: breakdownImg });
+        const pctImg = getChartImage('expenses:pct-of-sales');
+        if (pctImg) images.push({ key: 'expenses:pct-of-sales', image: pctImg });
+        addExpenseCategorySheet(wb, D, curEntity, curPeriod, tab.id, images);
+      }
+      await downloadWorkbook(wb, `Expenses (All) - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setCurSub(prevSub);
+      setBulkExporting(false);
+    }
+  }
 
   useEffect(() => {
     if (!isAllLocations && curSub === 'corporate') setCurSub('cogs');
@@ -457,16 +523,25 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-expenses">
-      <div className="subtabs">
-        {SUBTABS.filter(st => isAllLocations || st.id !== 'corporate').map(st => (
-          <div
-            key={st.id}
-            className={`subtab${curSub === st.id ? ' active' : ''}`}
-            onClick={() => setCurSub(st.id)}
-          >
-            {st.label}
-          </div>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div className="subtabs">
+          {SUBTABS.filter(st => isAllLocations || st.id !== 'corporate').map(st => (
+            <div
+              key={st.id}
+              className={`subtab${curSub === st.id ? ' active' : ''}`}
+              onClick={() => setCurSub(st.id)}
+            >
+              {st.label}
+            </div>
+          ))}
+        </div>
+        {isAdmin && (
+          <DownloadButton
+            label={bulkExporting ? 'Exporting all categories…' : 'Download all categories'}
+            busy={bulkExporting}
+            onClick={handleDownloadAllCategories}
+          />
+        )}
       </div>
 
       <div>
@@ -481,9 +556,11 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                 <div className="ccard-title">{cfg.title} — Grouped Trend</div>
                 <div className="ccard-sub">Actual vs Budget vs Prior Year</div>
               </div>
+              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:trend', `${cfg.title} Grouped Trend`)} />}
             </div>
             <div className="cwrap tall">
               <Bar
+                ref={trendRef}
                 key={curPeriod + curSub + '-trend'}
                 data={{
                   labels,
@@ -505,9 +582,13 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
 
         <div className="cgrid-pair">
           <div className="ccard">
-            <div className="ccard-hdr"><div><div className="ccard-title">Breakdown — Selected Period</div></div></div>
+            <div className="ccard-hdr">
+              <div><div className="ccard-title">Breakdown — Selected Period</div></div>
+              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:breakdown', `${cfg.title} Breakdown`)} />}
+            </div>
             <div className="cwrap pair">
               <Doughnut
+                ref={breakdownRef}
                 data={{
                   labels: donutLabels,
                   datasets: [{ data: donutVals.map(v => Math.round(v)), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 4 }],
@@ -527,10 +608,14 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
           </div>
 
           <div className="ccard">
-            <div className="ccard-hdr"><div><div className="ccard-title">{cfg.title} % of Sales</div></div></div>
+            <div className="ccard-hdr">
+              <div><div className="ccard-title">{cfg.title} % of Sales</div></div>
+              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:pct-of-sales', `${cfg.title} % of Sales`)} />}
+            </div>
             <div className="cwrap pair">
               {idx.length === 1 ? (
                 <Bar
+                  ref={pctOfSalesRef}
                   key={curPeriod + curSub + '-pct'}
                   data={{
                     labels,
@@ -548,6 +633,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                 />
               ) : (
                 <Line
+                  ref={pctOfSalesRef}
                   data={{
                     labels,
                     datasets: [{
@@ -573,7 +659,10 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
         </div>
 
         <div className="tcard">
-          <div className="tcard-hdr"><span className="tcard-title">{cfg.title} Detail</span></div>
+          <div className="tcard-hdr">
+            <span className="tcard-title">{cfg.title} Detail</span>
+            {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+          </div>
           <div className="tscroll">
             {renderTable()}
           </div>

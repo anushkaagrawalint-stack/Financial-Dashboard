@@ -2,11 +2,16 @@
 
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
+import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { getRole } from '@/lib/api';
+import { addSummarySheet } from '@/lib/exportSummary';
+import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
   D: DashboardData;
@@ -14,7 +19,7 @@ interface Props {
   curPeriod: string;
 }
 
-interface PnlLine {
+export interface PnlLine {
   lbl: string;
   key: string;
   isTotal?: boolean;
@@ -24,7 +29,7 @@ interface PnlLine {
   useEntity?: string;
 }
 
-const LINES: PnlLine[] = [
+export const LINES: PnlLine[] = [
   { lbl: 'Total Sales', key: 'Total Sales', isTotal: true, hero: true },
   { lbl: 'Cost of Goods Sold', key: 'Total Cost of Goods Sold', isExp: true, indent: 1 },
   { lbl: 'Gross Profit', key: 'Gross Profit', isTotal: true, hero: true },
@@ -45,6 +50,32 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
   const rangeLabel = idx.length > 1
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]}`
     : D.periods[idx[0]];
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
+
+  const waterfallRef = useChartRegistration('summary:waterfall');
+
+  async function handleDownloadTable() {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      addSummarySheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      await downloadWorkbook(wb, `P&L Summary - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownloadChart(key: string, label: string) {
+    const img = getChartImage(key);
+    if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
+    downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
+  }
 
   const salesAgg = agg(D, curEntity, 'Total Sales', idx);
   const gpAgg = agg(D, curEntity, 'Gross Profit', idx);
@@ -93,8 +124,11 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
 
       <div className="tcard">
         <div className="tcard-hdr">
-          <span className="tcard-title">P&L Summary</span>
-          <span className="tcard-meta">{rangeLabel}</span>
+          <div>
+            <span className="tcard-title">P&L Summary</span>
+            <span className="tcard-meta"> · {rangeLabel}</span>
+          </div>
+          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
         </div>
         <div className="tscroll">
           <table className="dtable">
@@ -155,9 +189,11 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
             <div className="ccard-title">Profit Waterfall</div>
             <div className="ccard-sub">Revenue → EBITDA → Net Income — selected period</div>
           </div>
+          {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('summary:waterfall', 'Profit Waterfall')} />}
         </div>
         <div className="cwrap tall">
           <Bar
+            ref={waterfallRef}
             key={curPeriod + '-waterfall'}
             data={{
               labels: wf.map(w => w.lbl),

@@ -2,85 +2,54 @@
 
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
-import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
+import { getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import { grd, tip } from '@/lib/chartSetup';
+import { computeLocationRows, ppDiff } from '@/lib/locationsCompute';
+import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { getRole } from '@/lib/api';
+import { addLocationsSheet } from '@/lib/exportLocations';
+import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
   D: DashboardData;
   curPeriod: string;
 }
 
-const LOCATIONS = ['Ballpark', 'MVT', 'National Landing', 'Mosaic', 'Rockville'];
-
 export default function LocationsPanel({ D, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
 
-  const rows = LOCATIONS.map(entity => {
-    const sales = agg(D, entity, 'Total Sales', idx);
-    const ebitda = agg(D, entity, 'EBITDA', idx);
-    const cogs = agg(D, entity, 'Total Cost of Goods Sold', idx);
-    const labor = agg(D, entity, 'Total Payroll Expenses', idx);
-    const opex = agg(D, entity, 'Total Operating Expense', idx);
+  const { rows, totals } = computeLocationRows(D, idx);
 
-    const pctOfSales = (x: number, base: number) => (base ? (x / base) * 100 : null);
-    const ebitdaPct = pctOfSales(ebitda.v, sales.v);
-    const ebitdaBudPct = pctOfSales(ebitda.b, sales.b);
-    const ebitdaPyPct = pctOfSales(ebitda.py, sales.py);
-    const cogsPct = pctOfSales(cogs.v, sales.v);
-    const cogsBudPct = pctOfSales(cogs.b, sales.b);
-    const cogsPyPct = pctOfSales(cogs.py, sales.py);
-    const laborPct = pctOfSales(labor.v, sales.v);
-    const laborBudPct = pctOfSales(labor.b, sales.b);
-    const laborPyPct = pctOfSales(labor.py, sales.py);
-    const opexPct = pctOfSales(opex.v, sales.v);
-    const opexBudPct = pctOfSales(opex.b, sales.b);
-    const opexPyPct = pctOfSales(opex.py, sales.py);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
-    return {
-      entity, sales, ebitda,
-      ebitdaPct, ebitdaBudPct, ebitdaPyPct,
-      cogsPct, cogsBudPct, cogsPyPct,
-      laborPct, laborBudPct, laborPyPct,
-      opexPct, opexBudPct, opexPyPct,
-    };
-  });
+  const salesByLocRef = useChartRegistration('locations:sales-by-location');
+  const ebitdaByLocRef = useChartRegistration('locations:ebitda-by-location');
 
-  const ppDiff = (a: number | null, b: number | null) => (a != null && b != null ? a - b : null);
+  async function handleDownloadTable() {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      addLocationsSheet(wb, D, curPeriod, []); // table only, no charts
+      await downloadWorkbook(wb, `Location Overview - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setExporting(false);
+    }
+  }
 
-  // "All Locations" row: dollar figures summed, percentages re-derived from the summed
-  // dollars (not averaged across locations) so COGS/Labor/OpEx/EBITDA % stay accurate.
-  const sumField = (key: 'sales' | 'ebitda' | 'cogs' | 'labor' | 'opex', field: 'v' | 'b' | 'py') => {
-    const metricKey: Record<string, string> = {
-      sales: 'Total Sales', ebitda: 'EBITDA', cogs: 'Total Cost of Goods Sold',
-      labor: 'Total Payroll Expenses', opex: 'Total Operating Expense',
-    };
-    return LOCATIONS.reduce((s, entity) => s + agg(D, entity, metricKey[key], idx)[field], 0);
-  };
-  const pctOfSales = (x: number, base: number) => (base ? (x / base) * 100 : null);
-  const totalSales = { v: sumField('sales', 'v'), b: sumField('sales', 'b'), py: sumField('sales', 'py') };
-  const totalEbitda = { v: sumField('ebitda', 'v'), b: sumField('ebitda', 'b'), py: sumField('ebitda', 'py') };
-  const totalCogs = { v: sumField('cogs', 'v'), b: sumField('cogs', 'b'), py: sumField('cogs', 'py') };
-  const totalLabor = { v: sumField('labor', 'v'), b: sumField('labor', 'b'), py: sumField('labor', 'py') };
-  const totalOpex = { v: sumField('opex', 'v'), b: sumField('opex', 'b'), py: sumField('opex', 'py') };
-  const totals = {
-    entity: 'All Locations',
-    sales: totalSales, ebitda: totalEbitda,
-    ebitdaPct: pctOfSales(totalEbitda.v, totalSales.v),
-    ebitdaBudPct: pctOfSales(totalEbitda.b, totalSales.b),
-    ebitdaPyPct: pctOfSales(totalEbitda.py, totalSales.py),
-    cogsPct: pctOfSales(totalCogs.v, totalSales.v),
-    cogsBudPct: pctOfSales(totalCogs.b, totalSales.b),
-    cogsPyPct: pctOfSales(totalCogs.py, totalSales.py),
-    laborPct: pctOfSales(totalLabor.v, totalSales.v),
-    laborBudPct: pctOfSales(totalLabor.b, totalSales.b),
-    laborPyPct: pctOfSales(totalLabor.py, totalSales.py),
-    opexPct: pctOfSales(totalOpex.v, totalSales.v),
-    opexBudPct: pctOfSales(totalOpex.b, totalSales.b),
-    opexPyPct: pctOfSales(totalOpex.py, totalSales.py),
-  };
+  function handleDownloadChart(key: string, label: string) {
+    const img = getChartImage(key);
+    if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
+    downloadImage(img, `${label} - ${curPeriod}.png`);
+  }
 
   return (
     <div className="panel active" id="panel-locations">
@@ -128,9 +97,11 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <div>
               <div className="ccard-title">Sales by Location</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:sales-by-location', 'Sales by Location')} />}
           </div>
           <div className="cwrap tall">
             <Bar
+              ref={salesByLocRef}
               data={{
                 labels: rows.map(r => r.entity),
                 datasets: [
@@ -153,9 +124,11 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <div>
               <div className="ccard-title">EBITDA by Location</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:ebitda-by-location', 'EBITDA by Location')} />}
           </div>
           <div className="cwrap tall">
             <Bar
+              ref={ebitdaByLocRef}
               data={{
                 labels: rows.map(r => r.entity),
                 datasets: [
@@ -176,8 +149,11 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
 
       <div className="tcard">
         <div className="tcard-hdr">
-          <span className="tcard-title">Location Detail</span>
-          <span className="tcard-meta">{labels.length > 1 ? `${labels[0]} – ${labels[labels.length - 1]}` : labels[0]}</span>
+          <div>
+            <span className="tcard-title">Location Detail</span>
+            <span className="tcard-meta"> · {labels.length > 1 ? `${labels[0]} – ${labels[labels.length - 1]}` : labels[0]}</span>
+          </div>
+          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
         </div>
         <div className="tscroll">
           <table className="dtable dtable-sticky-first">

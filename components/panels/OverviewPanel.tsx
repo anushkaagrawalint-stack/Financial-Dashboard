@@ -2,11 +2,16 @@
 
 import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
+import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { getRole } from '@/lib/api';
+import { addOverviewSheet } from '@/lib/exportOverview';
+import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
   D: DashboardData;
@@ -18,6 +23,34 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
   const en = D.t12[curEntity];
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
+
+  const revenueTrendRef = useChartRegistration('overview:revenue-trend');
+  const costBreakdownRef = useChartRegistration('overview:cost-breakdown');
+  const ebitdaChartRef = useChartRegistration('overview:ebitda');
+
+  async function handleDownloadTable() {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      addOverviewSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      await downloadWorkbook(wb, `Overview - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownloadChart(key: string, label: string) {
+    const img = getChartImage(key);
+    if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
+    downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
+  }
 
   const sales = agg(D, curEntity, 'Total Sales', idx);
   const gp = agg(D, curEntity, 'Gross Profit', idx);
@@ -116,9 +149,11 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Revenue Trend</div>
               <div className="ccard-sub">Actual vs Budget vs Prior Year — grouped by period</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('overview:revenue-trend', 'Revenue Trend')} />}
           </div>
           <div className="cwrap tall">
             <Bar
+              ref={revenueTrendRef}
               key={curPeriod + '-rev'}
               data={{
                 labels,
@@ -146,9 +181,11 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Cost Breakdown</div>
               <div className="ccard-sub">% of total sales — selected period</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('overview:cost-breakdown', 'Cost Breakdown')} />}
           </div>
           <div className="cwrap pair">
             <Doughnut
+              ref={costBreakdownRef}
               data={{
                 labels: donutLabels,
                 datasets: [{ data: donutVals.map(Math.round), backgroundColor: costSlices.map(s => s.color), borderWidth: 0, hoverOffset: 6 }],
@@ -173,9 +210,11 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">EBITDA</div>
               <div className="ccard-sub">Actual vs Budget vs Prior Year</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('overview:ebitda', 'EBITDA')} />}
           </div>
           <div className="cwrap pair">
             <Bar
+              ref={ebitdaChartRef}
               key={curPeriod + '-ebitda'}
               data={{ labels, datasets: ebitdaDatasets as never }}
               options={{
@@ -197,8 +236,11 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
 
       <div className="tcard">
         <div className="tcard-hdr">
-          <span className="tcard-title">Period Summary</span>
-          <span className="tcard-meta">{rangeLabel}</span>
+          <div>
+            <span className="tcard-title">Period Summary</span>
+            <span className="tcard-meta"> · {rangeLabel}</span>
+          </div>
+          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
         </div>
         <div className="tscroll">
           <table className="dtable">

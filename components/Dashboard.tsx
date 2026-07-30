@@ -10,6 +10,15 @@ import SummaryPanel from './panels/SummaryPanel';
 import FullPnlPanel from './panels/FullPnlPanel';
 import LocationsPanel from './panels/LocationsPanel';
 import type { DashboardData } from '@/lib/types';
+// Export All is commented out for now in favor of per-table/per-chart downloads.
+// import { getChartImagesByPrefix } from '@/lib/chartRegistry';
+// import { addOverviewSheet } from '@/lib/exportOverview';
+// import { addLocationsSheet } from '@/lib/exportLocations';
+// import { addRevenueSheet } from '@/lib/exportRevenue';
+// import { addExpensesSheet } from '@/lib/exportExpenses';
+// import { addSummarySheet } from '@/lib/exportSummary';
+// import { addFullPnlSheet } from '@/lib/exportFullPnl';
+// import { downloadWorkbook } from '@/lib/exportDownload';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -27,6 +36,7 @@ export default function Dashboard() {
   const [curEntity, setCurEntity] = useState('Consolidated');
   const [curPeriod, setCurPeriod] = useState('');
   const [error, setError] = useState('');
+  // const [exportingAll, setExportingAll] = useState(false); // Export All — commented out for now
 
   useEffect(() => {
     const tok = localStorage.getItem('wbr_token');
@@ -63,6 +73,42 @@ export default function Dashboard() {
     router.replace('/login');
   }
 
+  // Export All — commented out for now in favor of per-table/per-chart downloads.
+  // function handleExportAll() {
+  //   setExportingAll(true);
+  // }
+  //
+  // // Tabs other than the active one are hidden-rendered off-screen (below) so
+  // // their charts exist to be captured. The active tab's charts are already
+  // // live in the registry — hidden-rendering it too would register a second
+  // // instance under the same keys and wipe them out on unmount.
+  // useEffect(() => {
+  //   if (!exportingAll || !data) return;
+  //   let cancelled = false;
+  //   (async () => {
+  //     // Give the hidden panels below time to mount and Chart.js time to paint.
+  //     await new Promise(resolve => setTimeout(resolve, 600));
+  //     if (cancelled) return;
+  //     try {
+  //       const ExcelJS = (await import('exceljs')).default;
+  //       const wb = new ExcelJS.Workbook();
+  //       addOverviewSheet(wb, data, curEntity, curPeriod, getChartImagesByPrefix('overview:'));
+  //       addLocationsSheet(wb, data, curPeriod, getChartImagesByPrefix('locations:'));
+  //       addRevenueSheet(wb, data, curEntity, curPeriod, getChartImagesByPrefix('revenue:'));
+  //       addExpensesSheet(wb, data, curEntity, curPeriod, getChartImagesByPrefix('expenses:'));
+  //       addSummarySheet(wb, data, curEntity, curPeriod, getChartImagesByPrefix('summary:'));
+  //       addFullPnlSheet(wb, data, curPeriod, 'all');
+  //       await downloadWorkbook(wb, `Financial Dashboard Export All - ${curEntity} - ${curPeriod}.xlsx`);
+  //     } catch (e) {
+  //       alert(e instanceof Error ? e.message : 'Export All failed');
+  //     } finally {
+  //       if (!cancelled) setExportingAll(false);
+  //     }
+  //   })();
+  //   return () => { cancelled = true; };
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [exportingAll]);
+
   if (error) {
     return (
       <div className="loading-screen">
@@ -91,6 +137,18 @@ export default function Dashboard() {
         onPeriodChange={setCurPeriod}
         onLogout={handleLogout}
       />
+
+      {/* Export All hidden-render container — commented out along with the feature above.
+      {exportingAll && (
+        <div style={{ position: 'fixed', top: 0, left: -99999, width: 1400, zIndex: -1, pointerEvents: 'none' }} aria-hidden>
+          {activeTab !== 'overview' && <OverviewPanel D={data} curEntity={curEntity} curPeriod={curPeriod} />}
+          {activeTab !== 'locations' && <LocationsPanel D={data} curPeriod={curPeriod} />}
+          {activeTab !== 'revenue' && <RevenuePanel D={data} curEntity={curEntity} curPeriod={curPeriod} />}
+          {activeTab !== 'expenses' && <ExpensesPanel D={data} curEntity={curEntity} curPeriod={curPeriod} />}
+          {activeTab !== 'summary' && <SummaryPanel D={data} curEntity={curEntity} curPeriod={curPeriod} />}
+        </div>
+      )}
+      */}
 
       <div className="tabs">
         {TABS.map(tab => (

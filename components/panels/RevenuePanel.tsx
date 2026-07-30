@@ -2,11 +2,16 @@
 
 import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels } from '@/lib/chartSetup';
+import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { getRole } from '@/lib/api';
+import { addRevenueSheet, addRevenueChannelSheet } from '@/lib/exportRevenue';
+import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
   D: DashboardData;
@@ -14,14 +19,14 @@ interface Props {
   curPeriod: string;
 }
 
-type ChannelId = 'all' | 'inhouse' | 'takeout' | 'delivery' | 'catering' | 'offsites' | 'delfee';
+export type ChannelId = 'all' | 'inhouse' | 'takeout' | 'delivery' | 'catering' | 'offsites' | 'delfee';
 
 // altKey: second key whose value is summed into this sub-item
 // subKey: second key whose value is subtracted from this sub-item
-interface SubItem { lbl: string; key: string; altKey?: string; subKey?: string; }
-interface ChannelCfg { lbl: string; key: string; color: string; subitems: SubItem[] | null; }
+export interface SubItem { lbl: string; key: string; altKey?: string; subKey?: string; }
+export interface ChannelCfg { lbl: string; key: string; color: string; subitems: SubItem[] | null; }
 
-const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
+export const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
   all:      { lbl: 'All Channels',  key: 'Total Sales',                    color: '#9f7cef', subitems: null },
   inhouse:  { lbl: 'In-House',      key: 'Total Single Plate In-House Sales', color: '#9f7cef', subitems: [
     { lbl: 'Food',        key: 'Food' },
@@ -64,15 +69,71 @@ const CHANNEL_CFGS: Record<ChannelId, ChannelCfg> = {
   delfee:   { lbl: 'Delivery Fee',  key: 'Total Delivery Fee Income',       color: '#f472b6', subitems: null },
 };
 
-const ALL_CHANNELS: ChannelId[] = ['inhouse', 'takeout', 'delivery', 'catering', 'offsites', 'delfee'];
+export const ALL_CHANNELS: ChannelId[] = ['inhouse', 'takeout', 'delivery', 'catering', 'offsites', 'delfee'];
 
-const DEDUCTION_KEYS = ['Total Discounts / Refunds', 'Sales Adjustments', 'Open App Sales Adjustments', 'Open Tickets'];
+export const DEDUCTION_KEYS = ['Total Discounts / Refunds', 'Sales Adjustments', 'Open App Sales Adjustments', 'Open Tickets'];
 
 export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
   const [selCh, setSelCh] = useState<ChannelId>('all');
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
   const en = D.t12[curEntity];
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [bulkExporting, setBulkExporting] = useState(false);
+  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
+
+  const channelTrendRef = useChartRegistration('revenue:channel-trend');
+  const channelMixRef = useChartRegistration('revenue:channel-mix');
+
+  async function handleDownloadTable() {
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      addRevenueSheet(wb, D, curEntity, curPeriod, []); // table only, no charts
+      await downloadWorkbook(wb, `Revenue Channels - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownloadChart(key: string, label: string) {
+    const img = getChartImage(key);
+    if (!img) { alert('Chart not ready yet — try again in a moment.'); return; }
+    downloadImage(img, `${label} - ${curEntity} - ${curPeriod}.png`);
+  }
+
+  // Cycles through every channel (reusing the live Channel Trend/Mix charts
+  // already on screen), snapshotting each one into its own properly named
+  // sheet — table + charts together — instead of one combined table.
+  async function handleDownloadAllChannels() {
+    const prevSel = selCh;
+    setBulkExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      for (const chId of ALL_CHANNELS) {
+        setSelCh(chId);
+        await new Promise(r => setTimeout(r, 350));
+        const images: { key: string; image: string }[] = [];
+        const trendImg = getChartImage('revenue:channel-trend');
+        if (trendImg) images.push({ key: 'revenue:channel-trend', image: trendImg });
+        const mixImg = getChartImage('revenue:channel-mix');
+        if (mixImg) images.push({ key: 'revenue:channel-mix', image: mixImg });
+        addRevenueChannelSheet(wb, D, curEntity, curPeriod, chId, images);
+      }
+      await downloadWorkbook(wb, `Revenue Channels (All) - ${curEntity} - ${curPeriod}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setSelCh(prevSel);
+      setBulkExporting(false);
+    }
+  }
 
   const cfg = CHANNEL_CFGS[selCh];
   const salesAgg = agg(D, curEntity, 'Total Sales', idx);
@@ -157,9 +218,11 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Channel Mix</div>
               <div className="ccard-sub">% of gross revenue (excl. deductions) — selected period</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', 'Channel Mix')} />}
           </div>
           <div className="cwrap tall">
             <Doughnut
+              ref={channelMixRef}
               data={{
                 labels: chLabels,
                 datasets: [{ data: chVals, backgroundColor: chColors, borderWidth: 0, hoverOffset: 8 }],
@@ -189,9 +252,11 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">{cfg.lbl} Mix</div>
               <div className="ccard-sub">% of channel total — selected period</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', `${cfg.lbl} Mix`)} />}
           </div>
           <div className="cwrap tall">
             <Doughnut
+              ref={channelMixRef}
               data={{
                 labels: subLabels,
                 datasets: [{ data: subVals, backgroundColor: subColors, borderWidth: 0, hoverOffset: 8 }],
@@ -266,16 +331,25 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-revenue">
-      <div className="chart-ctrl" style={{ marginBottom: 12 }}>
-        <label>Channel</label>
-        <select value={selCh} onChange={e => setSelCh(e.target.value as ChannelId)}>
-          <option value="all">All Channels</option>
-          <option value="inhouse">In-House</option>
-          <option value="takeout">Takeout</option>
-          <option value="delivery">Delivery</option>
-          <option value="catering">Catering</option>
-          <option value="offsites">Offsites</option>
-        </select>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+        <div className="chart-ctrl">
+          <label>Channel</label>
+          <select value={selCh} onChange={e => setSelCh(e.target.value as ChannelId)}>
+            <option value="all">All Channels</option>
+            <option value="inhouse">In-House</option>
+            <option value="takeout">Takeout</option>
+            <option value="delivery">Delivery</option>
+            <option value="catering">Catering</option>
+            <option value="offsites">Offsites</option>
+          </select>
+        </div>
+        {isAdmin && (
+          <DownloadButton
+            label={bulkExporting ? 'Exporting all channels…' : 'Download all channels'}
+            busy={bulkExporting}
+            onClick={handleDownloadAllChannels}
+          />
+        )}
       </div>
 
       <div className="kpis">
@@ -289,9 +363,11 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Channel Trend</div>
               <div className="ccard-sub">Actual vs Budget vs Prior Year — grouped bars</div>
             </div>
+            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-trend', 'Channel Trend')} />}
           </div>
           <div className="cwrap tall">
             <Bar
+              ref={channelTrendRef}
               key={curPeriod + selCh}
               data={{
                 labels,
@@ -316,6 +392,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
       <div className="tcard">
         <div className="tcard-hdr">
           <span className="tcard-title">Channel Detail — Actual · LY · Budget</span>
+          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
         </div>
         <div className="tscroll">
           <table className="dtable">

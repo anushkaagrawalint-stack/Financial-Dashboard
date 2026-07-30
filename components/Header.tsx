@@ -15,6 +15,10 @@ interface HeaderProps {
   onEntityChange: (v: string) => void;
   onPeriodChange: (v: string) => void;
   onLogout: () => void;
+  // Export All is commented out for now (see components/Dashboard.tsx) in favor
+  // of per-table/per-chart downloads, so these are optional/unused for now.
+  onExportAll?: () => void;
+  exportingAll?: boolean;
 }
 
 function getPeriodBadge(curPeriod: string): string {
@@ -69,6 +73,13 @@ export default function Header({ D, curEntity, curPeriod, activeTab, onEntityCha
           <Image src="/kutlerri-logo.png" alt="Kutlerri Logo" height={28} width={120} style={{ height: 28, width: 'auto' }} priority />
         </div>
 
+        {/* Export All — commented out for now in favor of per-table/per-chart downloads.
+        {isAdmin && (
+          <button className="logout-btn" style={{ marginRight: 6 }} onClick={onExportAll} disabled={exportingAll}>
+            {exportingAll ? 'Exporting All…' : 'Export All'}
+          </button>
+        )}
+        */}
         {isAdmin && (
           <button className="logout-btn" style={{ marginRight: 6 }} onClick={() => router.push('/admin')}>Admin</button>
         )}
