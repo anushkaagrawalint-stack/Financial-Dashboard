@@ -7,7 +7,6 @@ import { ALL_LOCS, SELECT_OPTIONS, GROUPS, PCT_LINE_KEYS, EXPENSE_KEYS, type Sub
 import { computeDetailRow, ppDiff, type RowVals } from '@/lib/fullPnlCompute';
 import { addFullPnlSheet } from '@/lib/exportFullPnl';
 import { downloadWorkbook } from '@/lib/exportDownload';
-import { getRole } from '@/lib/api';
 import DownloadButton from '@/components/DownloadButton';
 
 interface Props {
@@ -269,12 +268,7 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
   const ddRef = useRef<HTMLDivElement>(null);
   const [openGrps, setOpenGrps] = useState<Set<string>>(new Set());
   const [openSubs, setOpenSubs] = useState<Set<string>>(new Set());
-  const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-
-  useEffect(() => {
-    setIsAdmin(getRole() === 'admin');
-  }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -355,7 +349,7 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
             <span className="tcard-title">Full P&L — {rangeLabel}</span>
             <span className="tcard-meta"> · {isCompare ? '$ (% of sales)' : 'Actual vs Budget vs Prior Year'}</span>
           </div>
-          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+          <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />
         </div>
         <div className="tscroll">
           <table className="dtable dtable-sticky-first">

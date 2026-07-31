@@ -2,13 +2,12 @@
 
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
-import { getRole } from '@/lib/api';
 import { addSummarySheet } from '@/lib/exportSummary';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -51,9 +50,7 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]}`
     : D.periods[idx[0]];
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const waterfallRef = useChartRegistration('summary:waterfall');
 
@@ -128,7 +125,7 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
             <span className="tcard-title">P&L Summary</span>
             <span className="tcard-meta"> · {rangeLabel}</span>
           </div>
-          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+          <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />
         </div>
         <div className="tscroll">
           <table className="dtable">
@@ -189,7 +186,7 @@ export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
             <div className="ccard-title">Profit Waterfall</div>
             <div className="ccard-sub">Revenue → EBITDA → Net Income — selected period</div>
           </div>
-          {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('summary:waterfall', 'Profit Waterfall')} />}
+          <DownloadButton label="Download chart" onClick={() => handleDownloadChart('summary:waterfall', 'Profit Waterfall')} />
         </div>
         <div className="cwrap tall">
           <Bar

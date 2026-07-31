@@ -8,7 +8,6 @@ import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
-import { getRole } from '@/lib/api';
 import { addExpenseCategorySheet } from '@/lib/exportExpenses';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -242,9 +241,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   const isAllLocations = curEntity === 'Consolidated';
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const trendRef = useChartRegistration('expenses:trend');
   const breakdownRef = useChartRegistration('expenses:breakdown');
@@ -516,7 +513,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
                 <div className="ccard-title">{cfg.title} — Grouped Trend</div>
                 <div className="ccard-sub">Actual vs Budget vs Prior Year</div>
               </div>
-              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:trend', `${cfg.title} Grouped Trend`)} />}
+              <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:trend', `${cfg.title} Grouped Trend`)} />
             </div>
             <div className="cwrap tall">
               <Bar
@@ -544,7 +541,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
           <div className="ccard">
             <div className="ccard-hdr">
               <div><div className="ccard-title">Breakdown — Selected Period</div></div>
-              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:breakdown', `${cfg.title} Breakdown`)} />}
+              <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:breakdown', `${cfg.title} Breakdown`)} />
             </div>
             <div className="cwrap pair">
               <Doughnut
@@ -570,7 +567,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
           <div className="ccard">
             <div className="ccard-hdr">
               <div><div className="ccard-title">{cfg.title} % of Sales</div></div>
-              {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:pct-of-sales', `${cfg.title} % of Sales`)} />}
+              <DownloadButton label="Download chart" onClick={() => handleDownloadChart('expenses:pct-of-sales', `${cfg.title} % of Sales`)} />
             </div>
             <div className="cwrap pair">
               {idx.length === 1 ? (
@@ -621,7 +618,7 @@ export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
         <div className="tcard">
           <div className="tcard-hdr">
             <span className="tcard-title">{cfg.title} Detail</span>
-            {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+            <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />
           </div>
           <div className="tscroll">
             {renderTable()}

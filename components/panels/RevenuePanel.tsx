@@ -2,13 +2,12 @@
 
 import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, getLabels, fmt$, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
-import { getRole } from '@/lib/api';
 import { addRevenueSheet, addRevenueChannelSheet } from '@/lib/exportRevenue';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -79,9 +78,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
   const en = D.t12[curEntity];
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const channelTrendRef = useChartRegistration('revenue:channel-trend');
   const channelMixRef = useChartRegistration('revenue:channel-mix');
@@ -197,7 +194,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Channel Mix</div>
               <div className="ccard-sub">% of gross revenue (excl. deductions) — selected period</div>
             </div>
-            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', 'Channel Mix')} />}
+            <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', 'Channel Mix')} />
           </div>
           <div className="cwrap tall">
             <Doughnut
@@ -231,7 +228,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">{cfg.lbl} Mix</div>
               <div className="ccard-sub">% of channel total — selected period</div>
             </div>
-            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', `${cfg.lbl} Mix`)} />}
+            <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-mix', `${cfg.lbl} Mix`)} />
           </div>
           <div className="cwrap tall">
             <Doughnut
@@ -333,7 +330,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
               <div className="ccard-title">Channel Trend</div>
               <div className="ccard-sub">Actual vs Budget vs Prior Year — grouped bars</div>
             </div>
-            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-trend', 'Channel Trend')} />}
+            <DownloadButton label="Download chart" onClick={() => handleDownloadChart('revenue:channel-trend', 'Channel Trend')} />
           </div>
           <div className="cwrap tall">
             <Bar
@@ -362,7 +359,7 @@ export default function RevenuePanel({ D, curEntity, curPeriod }: Props) {
       <div className="tcard">
         <div className="tcard-hdr">
           <span className="tcard-title">Channel Detail — Actual · LY · Budget</span>
-          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+          <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />
         </div>
         <div className="tscroll">
           <table className="dtable">

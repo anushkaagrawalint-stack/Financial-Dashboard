@@ -2,13 +2,12 @@
 
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import { grd, tip } from '@/lib/chartSetup';
 import { computeLocationRows, ppDiff } from '@/lib/locationsCompute';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
-import { getRole } from '@/lib/api';
 import { addLocationsSheet } from '@/lib/exportLocations';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -24,9 +23,7 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
 
   const { rows, totals } = computeLocationRows(D, idx);
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [exporting, setExporting] = useState(false);
-  useEffect(() => { setIsAdmin(getRole() === 'admin'); }, []);
 
   const salesByLocRef = useChartRegistration('locations:sales-by-location');
   const ebitdaByLocRef = useChartRegistration('locations:ebitda-by-location');
@@ -97,7 +94,7 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <div>
               <div className="ccard-title">Sales by Location</div>
             </div>
-            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:sales-by-location', 'Sales by Location')} />}
+            <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:sales-by-location', 'Sales by Location')} />
           </div>
           <div className="cwrap tall">
             <Bar
@@ -124,7 +121,7 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <div>
               <div className="ccard-title">EBITDA by Location</div>
             </div>
-            {isAdmin && <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:ebitda-by-location', 'EBITDA by Location')} />}
+            <DownloadButton label="Download chart" onClick={() => handleDownloadChart('locations:ebitda-by-location', 'EBITDA by Location')} />
           </div>
           <div className="cwrap tall">
             <Bar
@@ -153,7 +150,7 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
             <span className="tcard-title">Location Detail</span>
             <span className="tcard-meta"> · {labels.length > 1 ? `${labels[0]} – ${labels[labels.length - 1]}` : labels[0]}</span>
           </div>
-          {isAdmin && <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />}
+          <DownloadButton label="Download table" busy={exporting} onClick={handleDownloadTable} />
         </div>
         <div className="tscroll">
           <table className="dtable dtable-sticky-first">
