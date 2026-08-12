@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 
 const OPTIONS = [
   { value: 'Consolidated', label: 'All Locations' },
+  { value: 'Open Locations', label: 'Open Locations' },
   { value: 'Ballpark', label: 'Ballpark' },
   { value: 'MVT', label: 'MVT' },
   { value: 'National Landing', label: 'National Landing' },

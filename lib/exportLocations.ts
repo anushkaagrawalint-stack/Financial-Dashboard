@@ -8,11 +8,12 @@ import { addChartImage } from './exportChartImage';
 export function addLocationsSheet(
   wb: ExcelJS.Workbook, D: DashboardData, curPeriod: string,
   chartImages: { key: string; image: string }[],
+  locations?: string[], totalsLabel?: string,
 ): ExcelJS.Worksheet {
   const idx = getIdx(curPeriod, D.periods);
-  const { rows, totals } = computeLocationRows(D, idx);
+  const { rows, totals } = computeLocationRows(D, idx, locations, totalsLabel);
 
-  const sheetName = buildSheetName('Location Overview', D.periods, idx);
+  const sheetName = buildSheetName(totalsLabel === 'Open Locations' ? 'Open Locations' : 'Location Overview', D.periods, idx);
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
   ws.getColumn(1).width = 20;
   for (let i = 2; i <= 30; i++) ws.getColumn(i).width = 12;

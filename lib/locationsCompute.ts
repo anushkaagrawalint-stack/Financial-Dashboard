@@ -19,8 +19,11 @@ export interface LocationRow {
   opexPct: number | null; opexBudPct: number | null; opexPyPct: number | null;
 }
 
-export function computeLocationRows(D: DashboardData, idx: number[]): { rows: LocationRow[]; totals: LocationRow } {
-  const rows: LocationRow[] = LOCATIONS.map(entity => {
+export function computeLocationRows(
+  D: DashboardData, idx: number[],
+  locations: string[] = LOCATIONS, totalsLabel = 'All Locations',
+): { rows: LocationRow[]; totals: LocationRow } {
+  const rows: LocationRow[] = locations.map(entity => {
     const sales = agg(D, entity, 'Total Sales', idx);
     const ebitda = agg(D, entity, 'EBITDA', idx);
     const cogs = agg(D, entity, 'Total Cost of Goods Sold', idx);
@@ -40,7 +43,7 @@ export function computeLocationRows(D: DashboardData, idx: number[]): { rows: Lo
       sales: 'Total Sales', ebitda: 'EBITDA', cogs: 'Total Cost of Goods Sold',
       labor: 'Total Payroll Expenses', opex: 'Total Operating Expense',
     };
-    return LOCATIONS.reduce((s, entity) => s + agg(D, entity, metricKey[key], idx)[field], 0);
+    return locations.reduce((s, entity) => s + agg(D, entity, metricKey[key], idx)[field], 0);
   };
   const totalSales = { v: sumField('sales', 'v'), b: sumField('sales', 'b'), py: sumField('sales', 'py') };
   const totalEbitda = { v: sumField('ebitda', 'v'), b: sumField('ebitda', 'b'), py: sumField('ebitda', 'py') };
@@ -48,7 +51,7 @@ export function computeLocationRows(D: DashboardData, idx: number[]): { rows: Lo
   const totalLabor = { v: sumField('labor', 'v'), b: sumField('labor', 'b'), py: sumField('labor', 'py') };
   const totalOpex = { v: sumField('opex', 'v'), b: sumField('opex', 'b'), py: sumField('opex', 'py') };
   const totals: LocationRow = {
-    entity: 'All Locations',
+    entity: totalsLabel,
     sales: totalSales, ebitda: totalEbitda,
     ebitdaPct: pctOfSales(totalEbitda.v, totalSales.v), ebitdaBudPct: pctOfSales(totalEbitda.b, totalSales.b), ebitdaPyPct: pctOfSales(totalEbitda.py, totalSales.py),
     cogsPct: pctOfSales(totalCogs.v, totalSales.v), cogsBudPct: pctOfSales(totalCogs.b, totalSales.b), cogsPyPct: pctOfSales(totalCogs.py, totalSales.py),

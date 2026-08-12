@@ -7,7 +7,10 @@ export interface GrpRow { lbl: string; key: string; sub?: SubItem[]; useEntity?:
 export type GroupEntry = GrpRow & { type?: 'total' | 'sec'; isExp?: boolean };
 
 export const ALL_LOCS = ['Ballpark', 'MVT', 'National Landing', 'Mosaic', 'Rockville'];
-export const SELECT_OPTIONS = ['all', 'Consolidated', ...ALL_LOCS];
+// 'Open Locations' (every location except Ballpark) is a single-entity detail
+// view like 'Consolidated' — deliberately not part of ALL_LOCS, so it doesn't
+// also show up as an extra column in the "All Locations" compare view.
+export const SELECT_OPTIONS = ['all', 'Consolidated', 'Open Locations', ...ALL_LOCS];
 
 // Groups whose Var % vs Bud/PY is Actual% of sales minus Budget/PY% of sales
 // (a percentage-point diff), not the relative $ variance used elsewhere —

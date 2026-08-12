@@ -10,6 +10,7 @@ import SummaryPanel from './panels/SummaryPanel';
 import FullPnlPanel from './panels/FullPnlPanel';
 import LocationsPanel from './panels/LocationsPanel';
 import type { DashboardData } from '@/lib/types';
+import { withOpenLocations } from '@/lib/deriveEntities';
 // Export All is commented out for now in favor of per-table/per-chart downloads.
 // import { getChartImagesByPrefix } from '@/lib/chartRegistry';
 // import { addOverviewSheet } from '@/lib/exportOverview';
@@ -59,9 +60,10 @@ export default function Dashboard() {
       })
       .then((d: DashboardData | null) => {
         if (!d) return;
-        setData(d);
+        const withDerived = withOpenLocations(d);
+        setData(withDerived);
         // Default to the most recent period
-        if (d.periods?.length) setCurPeriod(d.periods[d.periods.length - 1]);
+        if (withDerived.periods?.length) setCurPeriod(withDerived.periods[withDerived.periods.length - 1]);
       })
       .catch(e => setError(e.message));
   }, [router]);

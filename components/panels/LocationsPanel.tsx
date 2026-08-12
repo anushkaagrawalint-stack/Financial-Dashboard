@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import type { DashboardData } from '@/lib/types';
 import { getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import { grd, tip } from '@/lib/chartSetup';
-import { computeLocationRows, ppDiff } from '@/lib/locationsCompute';
+import { computeLocationRows, ppDiff, LOCATIONS } from '@/lib/locationsCompute';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
 import { addLocationsSheet } from '@/lib/exportLocations';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
@@ -21,7 +21,10 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
   const labels = useMemo(() => getLabels(curPeriod, D.periods), [curPeriod, D.periods]);
 
-  const { rows, totals } = computeLocationRows(D, idx);
+  const [locFilter, setLocFilter] = useState<'all' | 'open'>('all');
+  const activeLocations = locFilter === 'open' ? LOCATIONS.filter(l => l !== 'Ballpark') : LOCATIONS;
+  const totalsLabel = locFilter === 'open' ? 'Open Locations' : 'All Locations';
+  const { rows, totals } = computeLocationRows(D, idx, activeLocations, totalsLabel);
 
   const [exporting, setExporting] = useState(false);
 
@@ -33,8 +36,8 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      addLocationsSheet(wb, D, curPeriod, []); // table only, no charts
-      await downloadWorkbook(wb, `Location Overview - ${curPeriod}.xlsx`);
+      addLocationsSheet(wb, D, curPeriod, [], activeLocations, totalsLabel); // table only, no charts
+      await downloadWorkbook(wb, `Location Overview (${totalsLabel}) - ${curPeriod}.xlsx`);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Download failed');
     } finally {
@@ -50,6 +53,14 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-locations">
+      <div className="chart-ctrl" style={{ marginBottom: 12 }}>
+        <label>Locations</label>
+        <select value={locFilter} onChange={e => setLocFilter(e.target.value as 'all' | 'open')}>
+          <option value="all">All Locations</option>
+          <option value="open">Open Locations</option>
+        </select>
+      </div>
+
       <div className="loc-cards">
         {rows.map(r => (
           <div className="ccard loc-card" key={r.entity}>
