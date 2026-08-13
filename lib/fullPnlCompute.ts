@@ -1,5 +1,6 @@
 import type { DashboardData } from './types';
 import { agg } from './utils';
+import { isConsolidatedFamily } from './deriveEntities';
 
 export interface RowVals { v: number; b: number; py: number; actPct: number | null; budPct: number | null; pyPct: number | null; }
 
@@ -11,7 +12,7 @@ export function computeDetailRow(
   let entity: string;
   let tsEntity: string;
   if (useEntity) {
-    if (selectedLoc !== 'Consolidated') return null; // corporate rows only apply at the consolidated level
+    if (!isConsolidatedFamily(selectedLoc)) return null; // corporate rows only apply at the consolidated level (incl. Open Locations, which is exempt from the Ballpark exclusion)
     entity = useEntity;
     tsEntity = 'Consolidated';
   } else {

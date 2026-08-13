@@ -8,6 +8,7 @@ import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { isConsolidatedFamily } from '@/lib/deriveEntities';
 import { addOverviewSheet } from '@/lib/exportOverview';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -69,7 +70,7 @@ export default function OverviewPanel({ D, curEntity, curPeriod }: Props) {
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]} (${idx.length} periods)`
     : D.periods[idx[0]];
 
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
   const co = agg(D, 'Consolidated', 'Total Corporate Overhead & Other', idx);
 
   const costSlices = [

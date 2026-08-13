@@ -8,6 +8,7 @@ import { agg, getIdx, getLabels, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls
 import KpiCard from '@/components/KpiCard';
 import { grd, tip, donutLabels as donutLabelsCfg } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { isConsolidatedFamily } from '@/lib/deriveEntities';
 import { addExpenseCategorySheet } from '@/lib/exportExpenses';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -238,7 +239,7 @@ export const isCogsOrLabor = (sub: string) => sub === 'cogs' || sub === 'labor';
 export default function ExpensesPanel({ D, curEntity, curPeriod }: Props) {
   const [curSub, setCurSub] = useState('cogs');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
 
   const [exporting, setExporting] = useState(false);

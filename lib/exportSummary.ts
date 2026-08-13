@@ -4,13 +4,14 @@ import { agg, getIdx, pctVar } from './utils';
 import { LINES } from '../components/panels/SummaryPanel';
 import { styleHeaderRow, styleTotalRow, varColor, valueColor, setMoney, setPct, buildSheetName, LOC_ABBREV } from './xlsxStyle';
 import { addChartImage } from './exportChartImage';
+import { isConsolidatedFamily } from './deriveEntities';
 
 export function addSummarySheet(
   wb: ExcelJS.Workbook, D: DashboardData, curEntity: string, curPeriod: string,
   chartImages: { key: string; image: string }[],
 ): ExcelJS.Worksheet {
   const idx = getIdx(curPeriod, D.periods);
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
   const totalSalesAgg = agg(D, curEntity, 'Total Sales', idx);
   const tSalesAct = totalSalesAgg.v || 1;
   const tSalesBud = totalSalesAgg.b || 1;

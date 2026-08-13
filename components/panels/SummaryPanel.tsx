@@ -8,6 +8,7 @@ import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls, hasBudget
 import KpiCard from '@/components/KpiCard';
 import { grd, tip } from '@/lib/chartSetup';
 import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
+import { isConsolidatedFamily } from '@/lib/deriveEntities';
 import { addSummarySheet } from '@/lib/exportSummary';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -44,7 +45,7 @@ export const LINES: PnlLine[] = [
 
 export default function SummaryPanel({ D, curEntity, curPeriod }: Props) {
   const idx = useMemo(() => getIdx(curPeriod, D.periods), [curPeriod, D.periods]);
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
   const showBud = hasBudget(D, curEntity, idx);
   const rangeLabel = idx.length > 1
     ? `${D.periods[idx[0]]} – ${D.periods[idx[idx.length - 1]]}`

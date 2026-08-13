@@ -39,3 +39,13 @@ export function withOpenLocations(D: DashboardData): DashboardData {
 
   return { ...D, t12: { ...D.t12, [OPEN_LOCATIONS_ENTITY]: openLocations } };
 }
+
+// Corporate Overhead is tracked separately (at 'RASA Worldwide', not per
+// location) and is deliberately exempt from the Ballpark exclusion — it
+// should read exactly the same under "Open Locations" as it does under
+// "All Locations" (Consolidated). Anywhere that gates Corporate Overhead
+// display on "is this the consolidated view" should check this instead of
+// a literal `entity === 'Consolidated'`.
+export function isConsolidatedFamily(entity: string): boolean {
+  return entity === BASE_ENTITY || entity === OPEN_LOCATIONS_ENTITY;
+}

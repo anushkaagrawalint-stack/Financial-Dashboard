@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-const OPTIONS = [
-  { value: 'Consolidated', label: 'All Locations' },
-  { value: 'Open Locations', label: 'Open Locations' },
+const INDIVIDUAL_OPTIONS = [
   { value: 'Ballpark', label: 'Ballpark' },
   { value: 'MVT', label: 'MVT' },
   { value: 'National Landing', label: 'National Landing' },
@@ -29,7 +27,20 @@ export default function LocationSelect({ value, onChange }: Props) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const label = OPTIONS.find(o => o.value === value)?.label ?? value;
+  // "Open Locations" mode is turned on/off via the standalone toggle shown
+  // below the tab bar, not from within this dropdown — but while it's on,
+  // this still highlights "All Locations" as the active family and hides
+  // Ballpark from the individual-location rows below, since it's already
+  // excluded from the aggregate.
+  const isOpenLocations = value === 'Open Locations';
+  const isAllFamily = value === 'Consolidated' || isOpenLocations;
+  const visibleIndividual = isOpenLocations
+    ? INDIVIDUAL_OPTIONS.filter(o => o.value !== 'Ballpark')
+    : INDIVIDUAL_OPTIONS;
+
+  const label = isOpenLocations
+    ? 'Open Locations'
+    : INDIVIDUAL_OPTIONS.find(o => o.value === value)?.label ?? (value === 'Consolidated' ? 'All Locations' : value);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -68,12 +79,32 @@ export default function LocationSelect({ value, onChange }: Props) {
           border: '1px solid rgba(124,58,237,0.2)',
           borderRadius: 8,
           boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-          minWidth: 200,
+          minWidth: 210,
           maxWidth: 'calc(100vw - 28px)',
           overflowX: 'hidden',
           padding: '4px 0',
         }}>
-          {OPTIONS.map(opt => (
+          <div
+            onClick={() => { onChange('Consolidated'); setOpen(false); }}
+            style={{
+              padding: '7px 14px',
+              fontSize: 12,
+              fontWeight: isAllFamily ? 600 : 400,
+              color: isAllFamily ? '#7c3aed' : '#1a1f2e',
+              background: isAllFamily ? '#f5f0ff' : 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'Montserrat, sans-serif',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (!isAllFamily) (e.currentTarget as HTMLDivElement).style.background = '#faf8ff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isAllFamily ? '#f5f0ff' : 'transparent'; }}
+          >
+            All Locations
+          </div>
+
+          <div style={{ height: 1, background: 'rgba(124,58,237,0.12)', margin: '3px 0' }} />
+
+          {visibleIndividual.map(opt => (
             <div
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}

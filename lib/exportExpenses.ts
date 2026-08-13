@@ -2,6 +2,7 @@ import type ExcelJS from 'exceljs';
 import type { DashboardData } from './types';
 import { agg, getIdx, pctVar } from './utils';
 import { CFGS, SUBTABS, isCogsOrLabor, type ExpenseItem } from '../components/panels/ExpensesPanel';
+import { isConsolidatedFamily } from './deriveEntities';
 import { styleHeaderRow, styleSectionRow, styleTotalRow, varColor, setMoney, setPct, buildSheetName, LOC_ABBREV } from './xlsxStyle';
 import { addChartImage } from './exportChartImage';
 
@@ -90,7 +91,7 @@ export function addExpensesSheet(
   chartImages: { key: string; image: string }[],
 ): ExcelJS.Worksheet {
   const idx = getIdx(curPeriod, D.periods);
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
   const sheetName = buildSheetName(`${LOC_ABBREV[curEntity] || curEntity} Expenses`, D.periods, idx);
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.getColumn(1).width = 30;

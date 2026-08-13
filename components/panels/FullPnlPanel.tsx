@@ -8,6 +8,7 @@ import { computeDetailRow, ppDiff, type RowVals } from '@/lib/fullPnlCompute';
 import { addFullPnlSheet } from '@/lib/exportFullPnl';
 import { downloadWorkbook } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
+import LocationModeToggle from '@/components/LocationModeToggle';
 
 interface Props {
   D: DashboardData;
@@ -264,6 +265,7 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
     : D.periods[idx[0]];
 
   const [selectedLoc, setSelectedLoc] = useState('all');
+  const [openOnly, setOpenOnly] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
   const ddRef = useRef<HTMLDivElement>(null);
   const [openGrps, setOpenGrps] = useState<Set<string>>(new Set());
@@ -278,23 +280,31 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const isCompare = selectedLoc === 'all';
+  const isAllFamily = isCompare || selectedLoc === 'Consolidated';
+  // In compare mode, Open Locations just drops the Ballpark column. In detail
+  // mode, it swaps which entity's numbers get read — Corporate Overhead is
+  // exempt from this either way (see isConsolidatedFamily).
+  const effectiveLoc = selectedLoc === 'Consolidated' && openOnly ? 'Open Locations' : selectedLoc;
+  const activeLocs = isCompare && openOnly
+    ? ['Consolidated', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
+    : ['Consolidated', ...ALL_LOCS];
+  const colCount = 1 + (isCompare ? activeLocs.length : 10);
+
   async function handleDownloadTable() {
     setExporting(true);
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      addFullPnlSheet(wb, D, curPeriod, selectedLoc);
-      await downloadWorkbook(wb, `Full P&L - ${selectedLoc === 'all' ? 'All Locations' : selectedLoc} - ${curPeriod}.xlsx`);
+      addFullPnlSheet(wb, D, curPeriod, effectiveLoc, openOnly);
+      const label = isCompare ? (openOnly ? 'Open Locations' : 'All Locations') : effectiveLoc;
+      await downloadWorkbook(wb, `Full P&L - ${label} - ${curPeriod}.xlsx`);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Download failed');
     } finally {
       setExporting(false);
     }
   }
-
-  const isCompare = selectedLoc === 'all';
-  const activeLocs = ['Consolidated', ...ALL_LOCS];
-  const colCount = 1 + (isCompare ? activeLocs.length : 10);
 
   function toggleGrp(key: string) {
     setOpenGrps(prev => {
@@ -316,31 +326,35 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-fullpnl">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span className="sel-label" style={{ color: '#7c3aed' }}>Location</span>
-        <div className="loc-dd-wrap" ref={ddRef}>
-          <div className="loc-dd-trigger" onClick={() => setDdOpen(o => !o)}>
-            <span>{ddLabel}</span>
-            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M0 0l5 6 5-6z" fill="#7c3aed" />
-            </svg>
-          </div>
-          {ddOpen && (
-            <div className="loc-dd-menu open">
-              {SELECT_OPTIONS.map((opt, i) => (
-                <div key={opt}>
-                  <div
-                    className={'loc-dd-item' + (opt === 'all' ? ' loc-dd-all' : '')}
-                    onClick={() => { setSelectedLoc(opt); setDdOpen(false); }}
-                  >
-                    <span>{opt === 'all' ? 'All Locations' : opt}</span>
-                  </div>
-                  {i === 0 && <div className="loc-dd-sep" />}
-                </div>
-              ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="sel-label" style={{ color: '#7c3aed' }}>Location</span>
+          <div className="loc-dd-wrap" ref={ddRef}>
+            <div className="loc-dd-trigger" onClick={() => setDdOpen(o => !o)}>
+              <span>{ddLabel}</span>
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M0 0l5 6 5-6z" fill="#7c3aed" />
+              </svg>
             </div>
-          )}
+            {ddOpen && (
+              <div className="loc-dd-menu open">
+                {SELECT_OPTIONS.filter(opt => !(openOnly && opt === 'Ballpark')).map((opt, i) => (
+                  <div key={opt}>
+                    <div
+                      className={'loc-dd-item' + (opt === 'all' ? ' loc-dd-all' : '')}
+                      onClick={() => { setSelectedLoc(opt); setDdOpen(false); }}
+                    >
+                      <span>{opt === 'all' ? 'All Locations' : opt}</span>
+                    </div>
+                    {i === 0 && <div className="loc-dd-sep" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {isAllFamily && <LocationModeToggle isOpen={openOnly} onChange={setOpenOnly} />}
       </div>
 
       <div className="tcard">
@@ -376,7 +390,7 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
                 if (g.type === 'total') {
                   return isCompare
                     ? <TotRow key={gi} D={D} lbl={g.lbl} dataKey={g.key} locs={activeLocs} idx={idx} />
-                    : <DetailTotRow key={gi} D={D} selectedLoc={selectedLoc} lbl={g.lbl} dataKey={g.key} idx={idx} />;
+                    : <DetailTotRow key={gi} D={D} selectedLoc={effectiveLoc} lbl={g.lbl} dataKey={g.key} idx={idx} />;
                 }
                 return isCompare ? (
                   <GrpRowComp
@@ -397,7 +411,7 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
                   <DetailGrpRow
                     key={gi}
                     D={D}
-                    selectedLoc={selectedLoc}
+                    selectedLoc={effectiveLoc}
                     lbl={g.lbl}
                     dataKey={g.key}
                     sub={g.sub}

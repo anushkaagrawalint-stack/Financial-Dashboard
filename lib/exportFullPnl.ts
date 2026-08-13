@@ -7,11 +7,16 @@ import { styleHeaderRow, styleSectionRow, styleTotalRow, varColor, valueColor, s
 
 // Adds a Full P&L worksheet to an existing workbook (so "Export All" and the
 // standalone Full P&L export share this exact logic) and returns it.
-export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: string, loc: string): ExcelJS.Worksheet {
+// `openOnly`: mirrors the on-screen Open Locations toggle — only meaningful
+// in compare mode (loc === 'all'), where it drops the Ballpark column. In
+// detail mode, pass 'Open Locations' directly as `loc` instead.
+export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: string, loc: string, openOnly = false): ExcelJS.Worksheet {
   const idx = getIdx(period, D.periods);
   const isCompare = loc === 'all';
-  const activeLocs = ['Consolidated', ...ALL_LOCS];
-  const sheetName = buildSheetName(isCompare ? 'All Locations' : (LOC_ABBREV[loc] || loc), D.periods, idx);
+  const activeLocs = isCompare && openOnly
+    ? ['Consolidated', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
+    : ['Consolidated', ...ALL_LOCS];
+  const sheetName = buildSheetName(isCompare ? (openOnly ? 'Open Locations' : 'All Locations') : (LOC_ABBREV[loc] || loc), D.periods, idx);
 
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
 

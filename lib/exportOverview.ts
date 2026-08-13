@@ -3,6 +3,7 @@ import type { DashboardData } from './types';
 import { agg, getIdx } from './utils';
 import { styleHeaderRow, varColor, valueColor, setMoney, setPct, buildSheetName, LOC_ABBREV } from './xlsxStyle';
 import { addChartImage } from './exportChartImage';
+import { isConsolidatedFamily } from './deriveEntities';
 
 // `includeKpiTable`: the on-screen "Period Summary" tcard (with its own
 // download button) only ever shows the period-by-period table below — the
@@ -16,7 +17,7 @@ export function addOverviewSheet(
 ): ExcelJS.Worksheet {
   const idx = getIdx(curPeriod, D.periods);
   const allIdx = getIdx('all', D.periods);
-  const isAllLocations = curEntity === 'Consolidated';
+  const isAllLocations = isConsolidatedFamily(curEntity);
 
   const sheetName = buildSheetName(`${LOC_ABBREV[curEntity] || curEntity} Overview`, D.periods, idx);
   const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 1 }] });

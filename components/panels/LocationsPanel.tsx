@@ -11,6 +11,7 @@ import { useChartRegistration, getChartImage } from '@/lib/chartRegistry';
 import { addLocationsSheet } from '@/lib/exportLocations';
 import { downloadWorkbook, downloadImage } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
+import LocationModeToggle from '@/components/LocationModeToggle';
 
 interface Props {
   D: DashboardData;
@@ -53,12 +54,8 @@ export default function LocationsPanel({ D, curPeriod }: Props) {
 
   return (
     <div className="panel active" id="panel-locations">
-      <div className="chart-ctrl" style={{ marginBottom: 12 }}>
-        <label>Locations</label>
-        <select value={locFilter} onChange={e => setLocFilter(e.target.value as 'all' | 'open')}>
-          <option value="all">All Locations</option>
-          <option value="open">Open Locations</option>
-        </select>
+      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
+        <LocationModeToggle isOpen={locFilter === 'open'} onChange={open => setLocFilter(open ? 'open' : 'all')} />
       </div>
 
       <div className="loc-cards">

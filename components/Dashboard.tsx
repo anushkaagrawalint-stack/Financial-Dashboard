@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from './Header';
+import LocationModeToggle from './LocationModeToggle';
 import OverviewPanel from './panels/OverviewPanel';
 import RevenuePanel from './panels/RevenuePanel';
 import ExpensesPanel from './panels/ExpensesPanel';
@@ -10,7 +11,7 @@ import SummaryPanel from './panels/SummaryPanel';
 import FullPnlPanel from './panels/FullPnlPanel';
 import LocationsPanel from './panels/LocationsPanel';
 import type { DashboardData } from '@/lib/types';
-import { withOpenLocations } from '@/lib/deriveEntities';
+import { withOpenLocations, isConsolidatedFamily } from '@/lib/deriveEntities';
 // Export All is commented out for now in favor of per-table/per-chart downloads.
 // import { getChartImagesByPrefix } from '@/lib/chartRegistry';
 // import { addOverviewSheet } from '@/lib/exportOverview';
@@ -163,6 +164,15 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {(activeTab === 'overview' || activeTab === 'revenue' || activeTab === 'expenses' || activeTab === 'summary') && isConsolidatedFamily(curEntity) && (
+        <div style={{ padding: '14px 28px 0', maxWidth: 1440, margin: '0 auto', display: 'flex', justifyContent: 'flex-end' }}>
+          <LocationModeToggle
+            isOpen={curEntity === 'Open Locations'}
+            onChange={open => setCurEntity(open ? 'Open Locations' : 'Consolidated')}
+          />
+        </div>
+      )}
 
       <div className="main">
         {activeTab === 'overview' && (
