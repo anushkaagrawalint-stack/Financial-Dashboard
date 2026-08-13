@@ -4,17 +4,19 @@ import { getIdx } from './utils';
 import { GROUPS, ALL_LOCS, PCT_LINE_KEYS, EXPENSE_KEYS } from './fullPnlGroups';
 import { computeDetailRow, computeCompareCell, ppDiff } from './fullPnlCompute';
 import { styleHeaderRow, styleSectionRow, styleTotalRow, varColor, valueColor, setMoney, setPct, LOC_ABBREV, buildSheetName } from './xlsxStyle';
+import { isConsolidatedFamily } from './deriveEntities';
 
 // Adds a Full P&L worksheet to an existing workbook (so "Export All" and the
 // standalone Full P&L export share this exact logic) and returns it.
 // `openOnly`: mirrors the on-screen Open Locations toggle — only meaningful
-// in compare mode (loc === 'all'), where it drops the Ballpark column. In
+// in compare mode (loc === 'all'), where it drops the Ballpark column and
+// swaps the "Consolidated" column itself to Consolidated-minus-Ballpark. In
 // detail mode, pass 'Open Locations' directly as `loc` instead.
 export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: string, loc: string, openOnly = false): ExcelJS.Worksheet {
   const idx = getIdx(period, D.periods);
   const isCompare = loc === 'all';
   const activeLocs = isCompare && openOnly
-    ? ['Consolidated', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
+    ? ['Open Locations', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
     : ['Consolidated', ...ALL_LOCS];
   const sheetName = buildSheetName(isCompare ? (openOnly ? 'Open Locations' : 'All Locations') : (LOC_ABBREV[loc] || loc), D.periods, idx);
 
@@ -42,7 +44,7 @@ export function addFullPnlSheet(wb: ExcelJS.Workbook, D: DashboardData, period: 
       let col = 2;
       for (const l of activeLocs) {
         const c = computeCompareCell(D, l, dataKey, subtractKey, useEntity, idx);
-        const isBlank = !!useEntity && l !== 'Consolidated';
+        const isBlank = !!useEntity && !isConsolidatedFamily(l);
         const v = isBlank ? null : c.v;
         setMoney(row.getCell(col), v, v != null ? varColor(v, isExp) : null);
         setPct(row.getCell(col + 1), isBlank ? null : c.pct);

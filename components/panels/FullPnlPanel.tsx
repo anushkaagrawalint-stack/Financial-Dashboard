@@ -5,6 +5,7 @@ import type { DashboardData } from '@/lib/types';
 import { agg, getIdx, fmt$, fmtPct, fmtVar, fmtVarPct, pctVar, varCls } from '@/lib/utils';
 import { ALL_LOCS, SELECT_OPTIONS, GROUPS, PCT_LINE_KEYS, EXPENSE_KEYS, type SubItem } from '@/lib/fullPnlGroups';
 import { computeDetailRow, ppDiff, type RowVals } from '@/lib/fullPnlCompute';
+import { isConsolidatedFamily } from '@/lib/deriveEntities';
 import { addFullPnlSheet } from '@/lib/exportFullPnl';
 import { downloadWorkbook } from '@/lib/exportDownload';
 import DownloadButton from '@/components/DownloadButton';
@@ -45,7 +46,9 @@ function GrpRowComp({ D, lbl, dataKey, sub, locs, idx, open, onToggle, openSubs,
 
   function renderCell(loc: string, key: string, subtractKey?: string) {
     if (useEntity) {
-      if (loc !== 'Consolidated') return <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(0, 0) }} />;
+      // Corporate Overhead is exempt from the Ballpark exclusion — it shows
+      // the same in the "Open Locations" column as it does in "Consolidated".
+      if (!isConsolidatedFamily(loc)) return <td key={loc} dangerouslySetInnerHTML={{ __html: cellFmtVal(0, 0) }} />;
       const a = agg(D, useEntity, key, idx);
       const v = subtractKey != null ? a.v - agg(D, useEntity, subtractKey, idx).v : a.v;
       const ts = agg(D, 'Consolidated', 'Total Sales', idx).v || 1;
@@ -282,12 +285,13 @@ export default function FullPnlPanel({ D, curPeriod }: Props) {
 
   const isCompare = selectedLoc === 'all';
   const isAllFamily = isCompare || selectedLoc === 'Consolidated';
-  // In compare mode, Open Locations just drops the Ballpark column. In detail
-  // mode, it swaps which entity's numbers get read — Corporate Overhead is
+  // In compare mode, Open Locations drops the Ballpark column AND swaps the
+  // "Consolidated" column itself to Consolidated-minus-Ballpark. In detail
+  // mode, it swaps which entity's numbers get read. Corporate Overhead is
   // exempt from this either way (see isConsolidatedFamily).
   const effectiveLoc = selectedLoc === 'Consolidated' && openOnly ? 'Open Locations' : selectedLoc;
   const activeLocs = isCompare && openOnly
-    ? ['Consolidated', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
+    ? ['Open Locations', ...ALL_LOCS.filter(l => l !== 'Ballpark')]
     : ['Consolidated', ...ALL_LOCS];
   const colCount = 1 + (isCompare ? activeLocs.length : 10);
 

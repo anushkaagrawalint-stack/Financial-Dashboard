@@ -40,7 +40,9 @@ export function computeCompareCell(
   subtractKey: string | undefined, useEntity: string | undefined, idx: number[],
 ): CompareCell {
   if (useEntity) {
-    if (loc !== 'Consolidated') return { v: 0, pct: 0 };
+    // Corporate Overhead is exempt from the Ballpark exclusion — same value
+    // in the "Open Locations" column as in "Consolidated".
+    if (!isConsolidatedFamily(loc)) return { v: 0, pct: 0 };
     const a = agg(D, useEntity, dataKey, idx);
     const v = subtractKey ? a.v - agg(D, useEntity, subtractKey, idx).v : a.v;
     const ts = agg(D, 'Consolidated', 'Total Sales', idx).v || 1;
