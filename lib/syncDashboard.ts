@@ -237,13 +237,42 @@ function readNumericCell(row: (XLSX.CellObject | undefined)[], col: number, r: n
   return 0;
 }
 
+// The report format every extractor column offset (COL_ACTUAL, COL_BUDGET, …)
+// below is designed for. Some R365 exports bundle multiple report types (e.g.
+// a "Locations Side by Side" summary, this per-entity detail report, and a
+// "Trailing 12" report) into one workbook, all exported per entity — Excel
+// then disambiguates the resulting name collisions with " (1)", " (2)" etc.
+// suffixes. Which base name ends up on the correct sheet is therefore not
+// reliable, so sheets are matched by this title (row 1, col A of every sheet)
+// instead of assuming the exact tab name always holds the right report.
+const EXPECTED_REPORT_TITLE = 'P&L - Per. & YTD vs Budget and PY';
+
+function sheetTitle(wb: XLSX.WorkBook, sheetName: string): string | null {
+  const ws = wb.Sheets[sheetName] as unknown as (XLSX.CellObject | undefined)[][];
+  const cell = ws?.[0]?.[0];
+  return cell && cell.t === 's' ? String(cell.v) : null;
+}
+
+// Finds the sheet for `baseName` that actually holds the expected report
+// format — checking the exact name first, then any " (1)", " (2)", …
+// duplicates Excel created for a name collision — falling back to the exact
+// name if no candidate's title matches (keeps prior behavior instead of
+// silently dropping the entity when a workbook is formatted unexpectedly).
+function findEntitySheet(wb: XLSX.WorkBook, baseName: string): string | null {
+  const candidates = wb.SheetNames.filter(n => n === baseName || n.startsWith(`${baseName} (`));
+  const titled = candidates.find(n => sheetTitle(wb, n) === EXPECTED_REPORT_TITLE);
+  if (titled) return titled;
+  return wb.SheetNames.includes(baseName) ? baseName : null;
+}
+
 // Returns entity → jsonKey → [actual, budget, priorYear, ytdActual, ytdBudget, ytdPriorYear]
 export function extractFromBuffer(buf: Buffer): Record<string, Record<string, [number, number, number, number, number, number]>> {
   const wb = XLSX.read(buf, { type: 'buffer', cellDates: false, cellFormula: true, sheetStubs: true, dense: true });
   const result: Record<string, Record<string, [number, number, number, number, number, number]>> = {};
 
-  for (const [sheetName, entity] of Object.entries(SHEET_TO_ENTITY)) {
-    if (!wb.SheetNames.includes(sheetName)) continue;
+  for (const [baseName, entity] of Object.entries(SHEET_TO_ENTITY)) {
+    const sheetName = findEntitySheet(wb, baseName);
+    if (!sheetName) continue;
 
     const ws = wb.Sheets[sheetName] as unknown as XLSX.WorkSheet[];
     const ev = makeSheetEvaluator(ws);
