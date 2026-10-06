@@ -26,5 +26,12 @@
     "passwordHash": "$2b$10$Fh06IOjopAYHzO0Gd.rZw.S3w8swYlaQR2BrvmjXcm1uafOo2lIG2",
     "role": "viewer",
     "createdAt": "2026-07-17T10:58:37.723Z"
+  },
+  {
+    "id": "8cd73d41-6036-4049-bd1c-19471d8c47c9",
+    "email": "kiran@kutlerri.ai",
+    "passwordHash": "$2b$10$LTSvFnTYk/7RAEo5L/vLjeNCRyIKP/XTDSyTv15TAe9PGVjo0p9oK",
+    "role": "viewer",
+    "createdAt": "2026-10-06T11:22:59.417Z"
   }
 ]
