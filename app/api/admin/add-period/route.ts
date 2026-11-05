@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { loadPeriods, savePeriods, DATA_DIR } from '@/lib/periods';
+import { loadPeriods, savePeriods, normalizePeriods, DATA_DIR } from '@/lib/periods';
 import { isGitHubConfigured, saveDataFile } from '@/lib/githubStorage';
-import { syncOnAddPeriod } from '@/lib/syncDashboard';
+import { syncOnAddPeriod, fullSync } from '@/lib/syncDashboard';
 import fs from 'fs';
 import path from 'path';
 
@@ -33,8 +33,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `${label} already exists — use Replace instead` }, { status: 409 });
   }
 
-  const newIdx   = periods.length > 0 ? Math.max(...periods.map(p => p.idx)) + 1 : 0;
-  const newEntry = { idx: newIdx, label, filename };
+  // Insert chronologically (not at the end) so a re-added earlier period goes
+  // back into its own slot; idx always equals position.
+  const updatedPeriods = normalizePeriods([...periods, { idx: -1, label, filename }]);
+  const newEntry = updatedPeriods.find(p => p.label === label)!;
+  const appendedAtEnd = newEntry.idx === updatedPeriods.length - 1;
 
   const buf = Buffer.from(await file.arrayBuffer());
 
@@ -45,11 +48,12 @@ export async function POST(request: Request) {
     fs.writeFileSync(path.join(DATA_DIR, filename), buf);
   }
 
-  const updatedPeriods = [...periods, newEntry];
   await savePeriods(updatedPeriods);
 
-  // Auto-sync: extend dashboard-data.json with the new period
-  await syncOnAddPeriod(newEntry, buf, updatedPeriods);
+  // Appending to the end only needs the new slot filled; inserting in the
+  // middle shifts later periods, so rebuild everything from the files.
+  if (appendedAtEnd) await syncOnAddPeriod(newEntry, buf, updatedPeriods);
+  else await fullSync(updatedPeriods);
 
   return NextResponse.json({ ok: true, period: newEntry });
 }

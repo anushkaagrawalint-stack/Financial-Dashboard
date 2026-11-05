@@ -32,3 +32,16 @@ export async function savePeriods(periods: PeriodEntry[]): Promise<void> {
   }
   fs.writeFileSync(PERIODS_CONFIG_PATH, JSON.stringify(periods, null, 2));
 }
+
+// Invariant the whole dashboard relies on: periods are in chronological order
+// (year, then period number) and each entry's idx equals its position. The
+// labels list and every data array in dashboard-data.json are indexed by this.
+export function normalizePeriods(periods: PeriodEntry[]): PeriodEntry[] {
+  const key = (label: string) => {
+    const m = label.match(/^P(\d+)\s+(\d{4})$/);
+    return m ? +m[2] * 100 + +m[1] : Number.MAX_SAFE_INTEGER;
+  };
+  return [...periods]
+    .sort((a, b) => key(a.label) - key(b.label) || a.idx - b.idx)
+    .map((p, i) => ({ ...p, idx: i }));
+}

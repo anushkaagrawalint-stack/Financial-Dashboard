@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { loadPeriods, savePeriods, DATA_DIR } from '@/lib/periods';
+import { loadPeriods, savePeriods, normalizePeriods, DATA_DIR } from '@/lib/periods';
+import { fullSync } from '@/lib/syncDashboard';
 import { isGitHubConfigured, deleteDataFile } from '@/lib/githubStorage';
 import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function DELETE(request: Request) {
   if (!verifyAdmin(request)) {
@@ -24,7 +26,11 @@ export async function DELETE(request: Request) {
     if (fs.existsSync(fpath)) fs.unlinkSync(fpath);
   }
 
-  await savePeriods(periods.filter(p => p.idx !== idx));
+  // Renumber the remaining periods (no idx gaps) and rebuild the data so the
+  // labels and data arrays stay aligned.
+  const remaining = normalizePeriods(periods.filter(p => p.idx !== idx));
+  await savePeriods(remaining);
+  await fullSync(remaining);
 
   return NextResponse.json({ ok: true, removed: period.label });
 }
